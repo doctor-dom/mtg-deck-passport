@@ -30,6 +30,7 @@ export type SpotlightPosterProps = {
   partnerLine?: string;
   description?: string;
   colors: ManaColor[];
+  showColorless?: boolean;
   heroImage?: string;
   heroName?: string;
   artUrl?: string;
@@ -62,6 +63,7 @@ export function SpotlightPoster({
   partnerLine,
   description,
   colors,
+  showColorless = false,
   heroImage,
   heroName,
   artUrl,
@@ -71,7 +73,7 @@ export function SpotlightPoster({
   deckUrl,
   qrDataUrl,
 }: SpotlightPosterProps) {
-  const pips = colors.length > 0 ? colors : (["C"] as const);
+  const pips = colors.length > 0 ? colors : showColorless ? (["C"] as const) : [];
   const maxBucket = Math.max(1, ...buckets);
   const credit = byline?.replace(/^by\s+/i, "").trim();
 
@@ -85,7 +87,7 @@ export function SpotlightPoster({
         overflow: "hidden",
         color: "#f4f7fb",
         background: "#070b14",
-        fontFamily: "var(--font-outfit), Outfit, sans-serif",
+        fontFamily: "var(--font-geist-sans), sans-serif",
       }}
     >
       <div style={{ position: "absolute", inset: 0, background: "#070b14" }} />

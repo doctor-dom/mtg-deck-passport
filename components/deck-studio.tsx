@@ -283,6 +283,7 @@ export function DeckStudio() {
           : "Three spotlight cards, a short line about the deck, and a poster you can share.")
       }
       colors={deck?.colorIdentity ?? []}
+      showColorless={deck != null && deck.colorIdentity.length === 0}
       heroImage={heroPrinting?.imageUrl ?? heroFallback?.imageUrl}
       heroName={heroPrinting?.name ?? heroFallback?.name ?? firstSpotlight?.name}
       artUrl={
@@ -325,8 +326,8 @@ export function DeckStudio() {
   const slowSource = /moxfield\.com/i.test(url);
 
   return (
-    <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-8 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:px-6">
-      <section className="grid content-start gap-6">
+    <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-8 px-4 py-8 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:px-6">
+      <section className="grid min-w-0 content-start gap-6">
         <div>
           <p className="text-xs font-semibold tracking-[0.22em] text-primary uppercase">
             Deck Spotlight
@@ -341,7 +342,7 @@ export function DeckStudio() {
         </div>
 
         <form
-          className="grid gap-3 rounded-2xl border border-border bg-card/80 p-4"
+          className="grid min-w-0 gap-3 rounded-2xl border border-border bg-card/80 p-4"
           onSubmit={(event) => {
             event.preventDefault();
             void loadDeck(url);
@@ -381,7 +382,7 @@ export function DeckStudio() {
         </form>
 
         {deck ? (
-          <div className="grid gap-5 rounded-2xl border border-border bg-card/80 p-4">
+          <div className="grid min-w-0 gap-5 rounded-2xl border border-border bg-card/80 p-4">
             <div>
               <p className="text-lg font-semibold">{deck.name}</p>
               <p className="text-sm text-muted-foreground">
@@ -424,6 +425,7 @@ export function DeckStudio() {
                 value={description}
                 maxLength={180}
                 placeholder="Unblockable creatures and ninjutsu, ending in a flashy attack."
+                className="field-sizing-fixed max-w-full"
                 onChange={(event) => setDescription(event.target.value)}
               />
             </div>
@@ -434,7 +436,6 @@ export function DeckStudio() {
                   <p className="text-sm font-medium">Commander printing</p>
                   <p className="text-sm text-muted-foreground">
                     This deck has a commander, so that card leads the poster. Pick the printing.
-                    Leaving a spotlight card without a set uses its original printing.
                   </p>
                 </div>
                 {commanders.length > 1 ? (
@@ -463,7 +464,7 @@ export function DeckStudio() {
                     ) : (
                       <select
                         id={`printing-${index}`}
-                        className="h-10 w-full rounded-lg border border-input bg-card px-2.5 text-sm"
+                        className="h-10 w-full max-w-full rounded-lg border border-input bg-card px-2.5 text-sm"
                         value={entry.selectedId}
                         onChange={(event) =>
                           setCommanders((current) =>
@@ -500,7 +501,7 @@ export function DeckStudio() {
               <label className="grid gap-1.5 text-sm">
                 <span className="font-medium">Add from this deck</span>
                 <select
-                  className="h-10 w-full rounded-lg border border-input bg-card px-2.5 text-sm"
+                  className="h-10 w-full max-w-full rounded-lg border border-input bg-card px-2.5 text-sm"
                   value=""
                   onChange={(event) => fillFromDeck(event.target.value)}
                 >
@@ -519,7 +520,7 @@ export function DeckStudio() {
                   <Input
                     id={`spotlight-${index}`}
                     value={slot.input}
-                    placeholder={index === 0 ? "Slither Blade|MH2" : "Card name"}
+                    placeholder={index === 0 ? "Satoru Umezawa|NEO" : "Card name"}
                     onChange={(event) => updateSlot(index, event.target.value)}
                     {...{
                       onValueChange: (value: string) => updateSlot(index, value),
@@ -551,7 +552,7 @@ export function DeckStudio() {
         ) : null}
       </section>
 
-      <section className="lg:sticky lg:top-6 lg:self-start">
+      <section className="min-w-0 lg:sticky lg:top-6 lg:self-start">
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">
             Preview
@@ -562,8 +563,11 @@ export function DeckStudio() {
             </Button>
           ) : null}
         </div>
-        <div ref={frameRef} className="w-full">
-          <div style={{ width: POSTER_WIDTH * scale, height: POSTER_HEIGHT * scale }}>
+        <div ref={frameRef} className="w-full min-w-0">
+          <div
+            className="overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/15"
+            style={{ width: POSTER_WIDTH * scale, height: POSTER_HEIGHT * scale }}
+          >
             <div
               ref={posterRef}
               style={{

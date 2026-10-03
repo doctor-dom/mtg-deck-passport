@@ -111,18 +111,21 @@ async function fetchMoxfield(id: string): Promise<unknown> {
       const response = await fetch(readerUrl, {
         headers: {
           Accept: "application/json",
-          "User-Agent": BROWSER_UA,
+          "User-Agent": "DeckSpotlight/1.0",
           "X-Return-Format": "text",
         },
         cache: "no-store",
-        signal: AbortSignal.timeout(45000),
+        signal: AbortSignal.timeout(50000),
       });
       if (response.status === 429) {
         await new Promise((resolve) => setTimeout(resolve, 1500));
         continue;
       }
       if (!response.ok) {
-        throw new DeckFetchError("Moxfield could not be reached from here.", 502);
+        throw new DeckFetchError(
+          "Moxfield blocked the deck read. Try the link again in a moment.",
+          502,
+        );
       }
       const envelope = (await response.json()) as { data?: { text?: string; content?: string } };
       const inner = envelope.data?.text ?? envelope.data?.content ?? "";

@@ -10,9 +10,9 @@ The QR code and the "Explore the full deck" line open the same deck link you pas
 
 Each spotlight card is entered as:
 
-- `Slither Blade` — original printing
-- `Slither Blade|MH2` — that set
-- `Slither Blade|MH2 123` — that set and collector number
+- `Satoru Umezawa` — original printing
+- `Satoru Umezawa|NEO` — that set
+- `Satoru Umezawa|NEO 234` — that set and collector number
 
 You can also pick a card from the loaded deck. That fills in the deck's own set and collector number.
 
