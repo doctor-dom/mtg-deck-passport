@@ -4,15 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { BRACKETS } from "@/lib/bracket";
 import { specFromCard } from "@/lib/card-spec";
 import { manaCurve } from "@/lib/mana-curve";
+import { PLAYSTYLES, togglePlaystyle, type Playstyle } from "@/lib/playstyle";
 import { defaultPrintingId, printingOptionLabel } from "@/lib/printings";
-import { kickerFor } from "@/lib/spotlight";
 import type { DeckCard, NormalizedDeck, ResolvedPrinting } from "@/lib/types";
 import { slugify } from "@/lib/urls";
 import { domToPng } from "modern-screenshot";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { POSTER_HEIGHT, POSTER_WIDTH, SpotlightPoster } from "./spotlight-poster";
+import { PassportSpread, POSTER_HEIGHT, POSTER_WIDTH } from "./passport-spread";
 
 const SAMPLES = [
   {
@@ -64,6 +65,9 @@ export function DeckStudio() {
   const [slots, setSlots] = useState<Slot[]>(EMPTY_SLOTS);
   const [commanders, setCommanders] = useState<CommanderChoice[]>([]);
   const [faceIndex, setFaceIndex] = useState(0);
+  const [bracket, setBracket] = useState<number | null>(null);
+  const [playstyles, setPlaystyles] = useState<Playstyle[]>([]);
+  const [showBack, setShowBack] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [scale, setScale] = useState(0.42);
@@ -195,6 +199,9 @@ export function DeckStudio() {
       setDescription("");
       setSlots(EMPTY_SLOTS.map((slot) => ({ ...slot })));
       setFaceIndex(0);
+      setBracket(data.deck.bracket ?? null);
+      setPlaystyles([]);
+      setShowBack(false);
       setCommanders(
         data.deck.commanders.map((card) => ({
           card,
@@ -238,6 +245,8 @@ export function DeckStudio() {
   const facePrinting = face?.printings.find((printing) => printing.id === face.selectedId);
   const firstSpotlight = slots.find((slot) => slot.card)?.card;
   const hasCommander = (deck?.commanders.length ?? 0) > 0;
+  const commanderDeck = deck?.spotlightKind === "commander";
+  const showingBack = Boolean(showBack && facePrinting?.backImageUrl);
   const heroPrinting = hasCommander ? facePrinting : firstSpotlight;
   const heroFallback = hasCommander ? face?.card : undefined;
   const partnerLine =
@@ -264,37 +273,37 @@ export function DeckStudio() {
   }, [deck]);
 
   const poster = (
-    <SpotlightPoster
-      kicker={deck ? kickerFor(deck.spotlightKind) : "Deck spotlight"}
-      byline={byline}
+    <PassportSpread
       deckName={deck?.name ?? "Your next deck"}
-      subtitle={
-        deck
-          ? hasCommander
-            ? (face?.card.name ?? deck.commanders[0]?.name ?? deck.formatLabel)
-            : `${deck.formatLabel} · ${cardCount(deck)} cards`
-          : "Paste a deck link to begin"
-      }
+      commanderName={hasCommander ? (showingBack ? facePrinting?.backName : undefined) || face?.card.name : undefined}
       partnerLine={deck && hasCommander ? partnerLine : undefined}
       description={
         description ||
-        (deck
-          ? undefined
-          : "Three spotlight cards, a short line about the deck, and a poster you can share.")
+        (deck ? undefined : "A short line about how the deck plays, typed across the notes page.")
       }
       colors={deck?.colorIdentity ?? []}
       showColorless={deck != null && deck.colorIdentity.length === 0}
-      heroImage={heroPrinting?.imageUrl ?? heroFallback?.imageUrl}
-      heroName={heroPrinting?.name ?? heroFallback?.name ?? firstSpotlight?.name}
-      artUrl={
-        (hasCommander ? facePrinting?.artCropUrl ?? heroFallback?.artCropUrl : undefined) ??
-        firstSpotlight?.artCropUrl
+      heroImage={
+        showingBack
+          ? facePrinting?.backImageUrl
+          : (heroPrinting?.imageUrl ?? heroFallback?.imageUrl)
       }
+      heroName={
+        showingBack
+          ? facePrinting?.backName || facePrinting?.name
+          : (heroPrinting?.name ?? heroFallback?.name ?? firstSpotlight?.name)
+      }
+      showingBack={showingBack}
       buckets={curve.buckets}
       average={curve.average}
       highlights={highlights}
       deckUrl={deck?.url}
       qrDataUrl={deck?.qrDataUrl}
+      byline={byline}
+      commanderDeck={Boolean(deck && commanderDeck)}
+      bracket={bracket}
+      formatLabel={deck?.formatLabel ?? "Deck"}
+      playstyles={playstyles}
     />
   );
 
@@ -309,12 +318,12 @@ export function DeckStudio() {
         width: POSTER_WIDTH,
         height: POSTER_HEIGHT,
         scale: 2,
-        backgroundColor: "#070b14",
+        backgroundColor: "#24170f",
         style: { transform: "none", transformOrigin: "top left" },
       });
       const link = document.createElement("a");
       link.href = dataUrl;
-      link.download = `${slugify(deck.name) || "deck"}-spotlight.png`;
+      link.download = `${slugify(deck.name) || "deck"}-passport.png`;
       link.click();
     } catch (error) {
       setExportError(error instanceof Error ? error.message : "The poster could not be saved.");
@@ -326,18 +335,19 @@ export function DeckStudio() {
   const slowSource = /moxfield\.com/i.test(url);
 
   return (
-    <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-8 px-4 py-8 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:px-6">
+    <div className="mx-auto grid w-full max-w-[1440px] grid-cols-1 gap-8 px-4 py-8 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:px-6">
       <section className="grid min-w-0 content-start gap-6">
         <div>
           <p className="text-xs font-semibold tracking-[0.22em] text-primary uppercase">
-            Deck Spotlight
+            Deck Passport
           </p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight text-balance">
-            Turn a deck link into a shareable card.
+            Turn a deck link into an open passport.
           </h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Paste a Moxfield, Archidekt, or ManaBox deck. Add up to three spotlight cards and a
-            short description. Commander decks put the commander on the poster as a fourth card.
+            Paste a Moxfield, Archidekt, or ManaBox deck. The left page carries the commander, the
+            deck name, and the mana curve. The right page carries your description and up to three
+            spotlight cards.
           </p>
         </div>
 
@@ -416,28 +426,80 @@ export function DeckStudio() {
             </div>
 
             <div className="grid gap-1.5">
-              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center justify-between gap-3">
                 <Label htmlFor="description">Short description</Label>
-                <span className="text-xs text-muted-foreground">{description.length}/180</span>
+                <span className="text-xs text-muted-foreground">{description.length}/220</span>
               </div>
               <Textarea
                 id="description"
                 value={description}
-                maxLength={180}
-                placeholder="Unblockable creatures and ninjutsu, ending in a flashy attack."
+                maxLength={220}
+                placeholder="Vehicles return attacking. The deck tries to win before the table untaps."
                 className="field-sizing-fixed max-w-full"
                 onChange={(event) => setDescription(event.target.value)}
               />
             </div>
+
+            <fieldset className="grid gap-2">
+              <legend className="text-sm font-medium">Playstyle stamp</legend>
+              <p className="text-sm text-muted-foreground">Choose up to two. They stamp the notes page.</p>
+              <div className="flex flex-wrap gap-2">
+                {PLAYSTYLES.map((style) => {
+                  const checked = playstyles.includes(style);
+                  const disabled = !checked && playstyles.length >= 2;
+                  return (
+                    <label
+                      key={style}
+                      className={`flex items-center gap-2 rounded-lg border border-border px-2.5 py-1.5 text-sm capitalize ${
+                        disabled ? "opacity-50" : ""
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        disabled={disabled}
+                        onChange={() => setPlaystyles((current) => togglePlaystyle(current, style))}
+                      />
+                      {style}
+                    </label>
+                  );
+                })}
+              </div>
+            </fieldset>
 
             {deck.commanders.length > 0 ? (
               <div className="grid gap-3">
                 <div>
                   <p className="text-sm font-medium">Commander printing</p>
                   <p className="text-sm text-muted-foreground">
-                    This deck has a commander, so that card leads the poster. Pick the printing.
+                    This deck has a commander, so that card leads the left page. Pick the printing.
                   </p>
                 </div>
+                {commanderDeck ? (
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="bracket">Commander bracket</Label>
+                    <select
+                      id="bracket"
+                      className="h-10 w-full max-w-full rounded-lg border border-input bg-card px-2.5 text-sm"
+                      value={bracket ?? ""}
+                      onChange={(event) =>
+                        setBracket(event.target.value ? Number(event.target.value) : null)
+                      }
+                    >
+                      <option value="">Choose a bracket…</option>
+                      {BRACKETS.map((item) => (
+                        <option key={item.value} value={item.value}>
+                          {item.value} · {item.name}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-sm text-muted-foreground">
+                      {deck.bracket
+                        ? `Imported bracket ${deck.bracket}. The visa stamp uses whatever you pick here.`
+                        : "The visa stamp uses this bracket. Deck sites do not always include one."}
+                    </p>
+                  </div>
+                ) : null}
                 {commanders.length > 1 ? (
                   <fieldset className="grid gap-2">
                     <legend className="text-sm font-medium">Face card</legend>
@@ -485,6 +547,17 @@ export function DeckStudio() {
                     )}
                   </div>
                 ))}
+                {facePrinting?.backImageUrl ? (
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={showBack}
+                      onChange={(event) => setShowBack(event.target.checked)}
+                    />
+                    Show the back face
+                    {facePrinting.backName ? ` (${facePrinting.backName})` : ""}
+                  </label>
+                ) : null}
               </div>
             ) : null}
 

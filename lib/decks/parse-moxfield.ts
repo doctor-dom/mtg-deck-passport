@@ -1,3 +1,4 @@
+import { readBracket } from "../bracket";
 import { isLandType, normalizeColors } from "../colors";
 import { scryfallImage } from "../images";
 import { authorFrom } from "../spotlight";
@@ -85,6 +86,7 @@ export type MoxfieldParse = {
   publicUrl?: string;
   colors: ReturnType<typeof normalizeColors>;
   cards: DeckCard[];
+  bracket?: number;
 };
 
 export function parseMoxfieldDeck(data: unknown): MoxfieldParse {
@@ -126,5 +128,13 @@ export function parseMoxfieldDeck(data: unknown): MoxfieldParse {
     throw new Error("That Moxfield deck did not include any cards.");
   }
 
-  return { name, format, author, publicUrl, colors, cards };
+  return {
+    name,
+    format,
+    author,
+    publicUrl,
+    colors,
+    cards,
+    bracket: readBracket(record.bracket) ?? readBracket(record.autoBracket) ?? readBracket(record.commanderBracket),
+  };
 }

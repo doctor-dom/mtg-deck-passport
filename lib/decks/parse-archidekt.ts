@@ -1,3 +1,4 @@
+import { readBracket } from "../bracket";
 import { isLandType, normalizeColors } from "../colors";
 import { scryfallImage } from "../images";
 import { authorFrom } from "../spotlight";
@@ -71,6 +72,7 @@ export type ArchidektParse = {
   author?: string;
   colors: ReturnType<typeof normalizeColors>;
   cards: DeckCard[];
+  bracket?: number;
 };
 
 export function parseArchidektDeck(data: unknown): ArchidektParse {
@@ -172,5 +174,9 @@ export function parseArchidektDeck(data: unknown): ArchidektParse {
     ),
     colors: normalizeColors(record.colors),
     cards,
+    bracket:
+      readBracket(record.bracket) ??
+      readBracket(record.commanderBracket) ??
+      readBracket(record.edhBracket),
   };
 }

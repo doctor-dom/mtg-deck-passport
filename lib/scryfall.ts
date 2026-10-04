@@ -1,4 +1,5 @@
 import { isLandType, normalizeColors } from "./colors";
+import { faceImages } from "./faces";
 import type { CardSpec } from "./card-spec";
 import type { DeckCard, ResolvedPrinting } from "./types";
 
@@ -74,7 +75,7 @@ function exactQuery(name: string): string {
 }
 
 function toPrinting(card: ScryfallCard): ResolvedPrinting {
-  const uris = card.image_uris ?? card.card_faces?.[0]?.image_uris;
+  const faces = faceImages(card);
   return {
     id: card.id,
     name: card.name,
@@ -84,8 +85,10 @@ function toPrinting(card: ScryfallCard): ResolvedPrinting {
     releasedAt: card.released_at,
     manaValue: card.cmc ?? 0,
     typeLine: card.type_line ?? card.card_faces?.[0]?.type_line ?? "",
-    imageUrl: uris?.large ?? uris?.normal ?? "",
-    artCropUrl: uris?.art_crop ?? uris?.normal ?? "",
+    imageUrl: faces.imageUrl,
+    artCropUrl: faces.artCropUrl,
+    backImageUrl: faces.backImageUrl,
+    backName: faces.backName,
     reprint: Boolean(card.reprint),
   };
 }

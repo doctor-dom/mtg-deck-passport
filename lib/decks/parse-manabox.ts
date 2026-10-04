@@ -1,3 +1,4 @@
+import { readBracket } from "../bracket";
 import { normalizeColors } from "../colors";
 import { upgradeScryfallVersion } from "../images";
 import type { Board, DeckCard, ManaColor } from "../types";
@@ -58,6 +59,7 @@ export type ManaBoxParse = {
   format: string;
   colors: ManaColor[];
   cards: DeckCard[];
+  bracket?: number;
 };
 
 export function parseManaboxHtml(html: string): ManaBoxParse {
@@ -142,5 +144,6 @@ export function parseManaboxHtml(html: string): ManaBoxParse {
     format,
     colors: normalizeColors(deck.colors),
     cards,
+    bracket: readBracket(deck.bracket) ?? readBracket(deck.commanderBracket),
   };
 }

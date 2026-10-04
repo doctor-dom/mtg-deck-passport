@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { readBracket } from "../lib/bracket";
 import { parseCardSpec, specFromCard } from "../lib/card-spec";
+import { faceImages } from "../lib/faces";
+import { togglePlaystyle } from "../lib/playstyle";
 import { normalizeColors } from "../lib/colors";
 import { parseArchidektDeck } from "../lib/decks/parse-archidekt";
 import { parseManaboxHtml } from "../lib/decks/parse-manabox";
@@ -108,6 +111,7 @@ describe("deck parsers", () => {
       publicUrl: "https://moxfield.com/decks/abc",
       colors: ["U", "B"],
       createdByUser: { userName: "doctor_bowties" },
+      bracket: 3,
       boards: {
         commanders: {
           cards: {
@@ -145,6 +149,7 @@ describe("deck parsers", () => {
     assert.equal(parsed.cards.find((entry) => entry.board === "commander")?.name, "Satoru Umezawa");
     assert.equal(parsed.cards.find((entry) => entry.name === "Island")?.isLand, true);
     assert.equal(parsed.author, "doctor_bowties");
+    assert.equal(parsed.bracket, 3);
     assert.equal(
       spotlightKindFrom(parsed.format, {
         hasCommander: true,
@@ -250,6 +255,41 @@ describe("deck parsers", () => {
       spotlightKindFrom(parsed.format, { hasCommander: true, hasOathbreaker: false }),
       "commander",
     );
+  });
+});
+
+describe("passport stamps", () => {
+  it("reads a commander bracket from a number or a nested deck field", () => {
+    assert.equal(readBracket(4), 4);
+    assert.equal(readBracket("2"), 2);
+    assert.equal(readBracket({ autoBracket: { bracket: 5 } }), 5);
+    assert.equal(readBracket(0), undefined);
+    assert.equal(readBracket("cedh"), undefined);
+  });
+
+  it("keeps at most two playstyle tags", () => {
+    assert.deepEqual(togglePlaystyle(["aggro"], "ramp"), ["aggro", "ramp"]);
+    assert.deepEqual(togglePlaystyle(["aggro", "ramp"], "control"), ["aggro", "ramp"]);
+    assert.deepEqual(togglePlaystyle(["aggro", "ramp"], "aggro"), ["ramp"]);
+  });
+
+  it("keeps a separate back image only when the second face has one", () => {
+    assert.equal(
+      faceImages({
+        image_uris: { large: "https://cards.scryfall.io/front.jpg" },
+        card_faces: [{ name: "Front" }, { name: "Back" }],
+      }).backImageUrl,
+      undefined,
+    );
+    const faces = faceImages({
+      card_faces: [
+        { name: "Esika, God of the Tree", image_uris: { large: "https://cards.scryfall.io/front.jpg", art_crop: "https://cards.scryfall.io/front-art.jpg" } },
+        { name: "The Prismatic Bridge", image_uris: { large: "https://cards.scryfall.io/back.jpg" } },
+      ],
+    });
+    assert.equal(faces.imageUrl, "https://cards.scryfall.io/front.jpg");
+    assert.equal(faces.backImageUrl, "https://cards.scryfall.io/back.jpg");
+    assert.equal(faces.backName, "The Prismatic Bridge");
   });
 });
 

@@ -1,8 +1,12 @@
-# Deck Spotlight
+# Deck Passport
 
-Turn a public Magic: The Gathering deck link into a shareable poster. Paste a deck from Moxfield, Archidekt, or ManaBox, choose up to three spotlight cards, write a short description, and download a PNG.
+Turn a public Magic: The Gathering deck link into an open passport. Paste a deck from Moxfield, Archidekt, or ManaBox, choose up to three spotlight cards, write a short description, and download a PNG.
 
-Commander, Brawl, and Oathbreaker decks are detected automatically. The commander (or oathbreaker) is added as the lead card, and you pick which printing to show. The poster background is a zoomed, centered, faded crop of that card's art. Other decks use the first spotlight card for the lead art instead.
+The spread is two pages. The left page shows the commander (or the first spotlight card, when the deck has no commander), the deck name, and the mana curve. The right page shows the description and the spotlight cards. There is no card-art backdrop.
+
+A visa stamp sits on the commander. Commander decks stamp a bracket from 1 (Exhibition) through 5 (cEDH). If the deck site includes a bracket, it is selected for you and you can change it. Other formats stamp the deck type instead, such as Standard, Modern, or Historic. A second stamp on the notes page takes up to two playstyles: aggro, control, combo, midrange, or ramp.
+
+Commander, Brawl, and Oathbreaker decks are detected automatically. You pick the commander printing. If that printing is double-faced, you can show the back face.
 
 The QR code and the "Explore the full deck" line open the same deck link you pasted, rewritten to a stable URL for that site.
 

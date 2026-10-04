@@ -27,6 +27,7 @@ type ParsedPieces = {
   url?: string;
   colors: ReturnType<typeof normalizeColors>;
   cards: DeckCard[];
+  bracket?: number;
 };
 
 function heroesFor(cards: DeckCard[], kind: SpotlightKind): DeckCard[] {
@@ -63,6 +64,7 @@ function assemble(source: NormalizedDeck["source"], id: string, originalUrl: str
     commanders,
     cards: main,
     colorIdentity,
+    bracket: pieces.bracket,
     warnings: [],
   };
 }
@@ -197,6 +199,7 @@ export async function fetchDeck(rawUrl: string): Promise<NormalizedDeck> {
       url: canonicalDeckUrl("moxfield", parsed.id, deck.name, deck.publicUrl),
       colors: deck.colors,
       cards: deck.cards,
+      bracket: deck.bracket,
     };
   } else if (parsed.source === "archidekt") {
     const data = await fetchArchidekt(parsed.id);

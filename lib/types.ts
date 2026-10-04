@@ -39,6 +39,7 @@ export type NormalizedDeck = {
   commanders: DeckCard[];
   cards: DeckCard[];
   colorIdentity: ManaColor[];
+  bracket?: number;
   warnings: string[];
   qrDataUrl: string;
 };
@@ -54,5 +55,7 @@ export type ResolvedPrinting = {
   typeLine: string;
   imageUrl: string;
   artCropUrl: string;
+  backImageUrl?: string;
+  backName?: string;
   reprint: boolean;
 };
