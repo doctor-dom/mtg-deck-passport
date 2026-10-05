@@ -2,13 +2,13 @@
 
 Turn a public Magic: The Gathering deck link into an open passport. Paste a deck from Moxfield, Archidekt, or ManaBox, choose up to three spotlight cards, write a short description, and download a PNG.
 
-The spread is two pages. The left page shows the commander (or the first spotlight card, when the deck has no commander), the deck name, and the mana curve. The right page shows the description and the spotlight cards. There is no card-art backdrop.
+The sheet is faint blue. The commander side shows the commander (or the first spotlight card, when the deck has no commander), the deck-type visa, the playstyle stamp, power stamps for a commander bracket, and a large deck-list QR. The other side shows a large deck title, the description, and the spotlight cards. There is no mana curve and no card-art backdrop.
 
-A visa stamp sits on the commander. Commander decks stamp a bracket from 1 (Exhibition) through 5 (cEDH). If the deck site includes a bracket, it is selected for you and you can change it. Other formats stamp the deck type instead, such as Standard, Modern, or Historic. A second stamp on the notes page takes up to two playstyles: aggro, control, combo, midrange, or ramp.
+Commander decks stamp a bracket from 1 (Exhibition) through 5 (cEDH) as that many power stamps. If the deck site includes a bracket, it is selected for you and you can change it. Other formats stamp the deck type instead, such as Standard, Modern, or Historic. The playstyle stamp takes up to two of aggro, control, combo, midrange, or ramp.
 
 Commander, Brawl, and Oathbreaker decks are detected automatically. You pick the commander printing. If that printing is double-faced, you can show the back face.
 
-The QR code and the "Explore the full deck" line open the same deck link you pasted, rewritten to a stable URL for that site.
+The QR code and the Deck List line open the same deck link you pasted, rewritten to a stable URL for that site.
 
 ## Card syntax
 

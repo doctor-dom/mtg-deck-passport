@@ -1,18 +1,19 @@
 /* Card images stay as plain <img> tags so the PNG export can inline them. */
 /* eslint-disable @next/next/no-img-element */
 import { bracketName } from "@/lib/bracket";
-import { formatAverage } from "@/lib/mana-curve";
 import { playstyleLabel, type Playstyle } from "@/lib/playstyle";
 import type { ManaColor } from "@/lib/types";
 import { displayUrl } from "@/lib/urls";
 
-export const POSTER_WIDTH = 2160;
-export const POSTER_HEIGHT = 940;
+export const POSTER_WIDTH = 2000;
+export const POSTER_HEIGHT = 1120;
 
 const TYPE = "var(--font-typewriter), 'Courier New', Courier, monospace";
-const INK = "#2a2118";
-const PAPER = "#f4ecd9";
-const RULE = "rgba(42, 33, 24, 0.2)";
+const INK = "#1a3148";
+const PAPER = "#e7f2fc";
+const FRAME = "#c9dff3";
+const STAMP_INK = "#1e4b7a";
+const STAMP_FILL = "rgba(231, 242, 252, 0.78)";
 
 const PIP_SRC: Record<ManaColor | "C", string> = {
   W: "/mana/W.svg",
@@ -23,10 +24,11 @@ const PIP_SRC: Record<ManaColor | "C", string> = {
   C: "/mana/C.svg",
 };
 
-const HERO_W = 360;
-const HERO_H = 503;
-const SPOT_W = 400;
-const SPOT_H = 558;
+const HERO_W = 522;
+const HERO_H = 730;
+const SPOT_W = 384;
+const SPOT_H = 536;
+const QR = 268;
 
 export type PassportHighlight = {
   name: string;
@@ -43,8 +45,6 @@ export type PassportSpreadProps = {
   heroImage?: string;
   heroName?: string;
   showingBack?: boolean;
-  buckets: number[];
-  average: number;
   highlights: PassportHighlight[];
   deckUrl?: string;
   qrDataUrl?: string;
@@ -72,50 +72,50 @@ function passportNo(url?: string): string {
 }
 
 function DeckTypeStamp({ label }: { label: string }) {
-  const size = label.length > 14 ? 28 : label.length > 10 ? 36 : 46;
+  const size = label.length > 14 ? 26 : label.length > 10 ? 32 : 40;
   return (
     <div
       style={{
-        width: 640,
-        height: 268,
+        width: 430,
+        height: 176,
         borderRadius: "50%",
-        border: "8px solid #1e4b7a",
-        color: "#1e4b7a",
+        border: "7px solid " + STAMP_INK,
+        color: STAMP_INK,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        transform: "rotate(-7deg)",
-        background: "rgba(244, 236, 217, 0.62)",
-        boxShadow: "inset 0 0 0 3px #1e4b7a",
+        transform: "rotate(-8deg)",
+        background: STAMP_FILL,
+        boxShadow: "inset 0 0 0 3px " + STAMP_INK,
         fontFamily: TYPE,
       }}
     >
       <div
         style={{
-          width: 560,
-          height: 196,
+          width: 372,
+          height: 128,
           borderRadius: "50%",
-          border: "2px solid #1e4b7a",
+          border: "2px solid " + STAMP_INK,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
           textAlign: "center",
-          padding: "8px 36px",
+          padding: "4px 28px",
           boxSizing: "border-box",
-          gap: 6,
+          gap: 4,
         }}
       >
-        <div style={{ fontSize: 16, letterSpacing: "0.32em", lineHeight: 1, flex: "0 0 auto" }}>VISA</div>
-        <div style={{ fontSize: size, lineHeight: 1, maxWidth: 460, flex: "0 0 auto" }}>{label}</div>
-        <div style={{ fontSize: 16, letterSpacing: "0.2em", lineHeight: 1, flex: "0 0 auto" }}>ADMITTED</div>
+        <div style={{ fontSize: 14, letterSpacing: "0.28em", lineHeight: 1, flex: "0 0 auto" }}>VISA</div>
+        <div style={{ fontSize: size, lineHeight: 1, maxWidth: 320, flex: "0 0 auto" }}>{label}</div>
+        <div style={{ fontSize: 14, letterSpacing: "0.18em", lineHeight: 1, flex: "0 0 auto" }}>ADMITTED</div>
       </div>
     </div>
   );
 }
 
 function PowerStamps({ count, caption }: { count: number; caption?: string }) {
-  const rotations = [-18, -7, 8, -12, 4];
+  const rotations = [-16, -6, 9, -12, 4];
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
       <div style={{ display: "flex", alignItems: "center" }}>
@@ -123,9 +123,9 @@ function PowerStamps({ count, caption }: { count: number; caption?: string }) {
           <div
             key={index}
             style={{
-              width: 84,
-              height: 84,
-              marginLeft: index === 0 ? 0 : -30,
+              width: 78,
+              height: 78,
+              marginLeft: index === 0 ? 0 : -26,
               borderRadius: "50%",
               border: "3px solid #9c2b2b",
               color: "#9c2b2b",
@@ -133,7 +133,7 @@ function PowerStamps({ count, caption }: { count: number; caption?: string }) {
               alignItems: "center",
               justifyContent: "center",
               transform: `rotate(${rotations[index % rotations.length]}deg)`,
-              background: "rgba(244, 236, 217, 0.72)",
+              background: STAMP_FILL,
               boxShadow: "inset 0 0 0 1px #9c2b2b",
               fontFamily: TYPE,
               fontSize: 13,
@@ -146,7 +146,7 @@ function PowerStamps({ count, caption }: { count: number; caption?: string }) {
         ))}
       </div>
       {caption ? (
-        <div style={{ fontSize: 13, letterSpacing: "0.14em", color: "#9c2b2b" }}>{caption}</div>
+        <div style={{ fontSize: 14, letterSpacing: "0.14em", color: "#9c2b2b" }}>{caption}</div>
       ) : null}
     </div>
   );
@@ -157,19 +157,19 @@ function PlaystyleStamp({ styles }: { styles: Playstyle[] }) {
   return (
     <div
       style={{
-        width: 320,
-        padding: "18px 18px 20px",
-        border: "7px solid #1e4b7a",
-        color: "#1e4b7a",
+        width: 300,
+        padding: "12px 14px 14px",
+        border: "6px solid " + STAMP_INK,
+        color: STAMP_INK,
         textAlign: "center",
-        transform: "rotate(7deg)",
-        background: "rgba(244, 236, 217, 0.55)",
-        boxShadow: "inset 0 0 0 3px #1e4b7a",
+        transform: "rotate(6deg)",
+        background: STAMP_FILL,
+        boxShadow: "inset 0 0 0 2px " + STAMP_INK,
         fontFamily: TYPE,
       }}
     >
-      <div style={{ fontSize: 16, letterSpacing: "0.24em" }}>PLAYSTYLE</div>
-      <div style={{ fontSize: label.length > 16 ? 26 : 34, lineHeight: 1.05, marginTop: 8 }}>{label}</div>
+      <div style={{ fontSize: 14, letterSpacing: "0.22em" }}>PLAYSTYLE</div>
+      <div style={{ fontSize: label.length > 16 ? 22 : 30, lineHeight: 1.05, marginTop: 6 }}>{label}</div>
     </div>
   );
 }
@@ -189,7 +189,7 @@ function PinnedCard({
     <figure
       style={{
         margin: 0,
-        marginLeft: index === 0 ? 0 : -90,
+        marginLeft: index === 0 ? 0 : -78,
         width: SPOT_W,
         position: "relative",
         zIndex: index + 1,
@@ -199,25 +199,25 @@ function PinnedCard({
       <div
         style={{
           position: "absolute",
-          top: 16,
+          top: 14,
           left: `${46 + index * 4}%`,
-          width: 26,
-          height: 26,
-          marginLeft: -13,
+          width: 24,
+          height: 24,
+          marginLeft: -12,
           borderRadius: "50%",
           background: "radial-gradient(circle at 35% 30%, #f6e7a8, #b0892e 55%, #6d5314 80%)",
-          boxShadow: "0 2px 2px rgba(42,33,24,0.4), inset 0 1px 1px rgba(255,255,255,0.7)",
+          boxShadow: "0 2px 2px rgba(26,49,72,0.35), inset 0 1px 1px rgba(255,255,255,0.7)",
           zIndex: 3,
         }}
       />
       <div
         style={{
           position: "absolute",
-          top: 24,
+          top: 22,
           left: "50%",
-          width: 128,
-          height: 32,
-          marginLeft: -64,
+          width: 118,
+          height: 30,
+          marginLeft: -59,
           background: "linear-gradient(180deg, rgba(255,248,214,0.35), rgba(226,204,132,0.72))",
           border: "1px solid rgba(168, 142, 70, 0.35)",
           transform: "rotate(-2deg)",
@@ -232,9 +232,9 @@ function PinnedCard({
             width: "100%",
             height: SPOT_H,
             objectFit: "cover",
-            borderRadius: 4,
-            background: "#d9d0bc",
-            boxShadow: "0 10px 18px rgba(42, 33, 24, 0.22)",
+            borderRadius: 8,
+            background: "#d5e4f2",
+            boxShadow: "0 10px 18px rgba(26, 49, 72, 0.18)",
           }}
         />
       ) : (
@@ -242,13 +242,13 @@ function PinnedCard({
           style={{
             width: "100%",
             height: SPOT_H,
-            borderRadius: 4,
-            border: "1px dashed rgba(42,33,24,0.28)",
-            background: "rgba(255,255,255,0.25)",
+            borderRadius: 8,
+            border: "1px dashed rgba(26,49,72,0.28)",
+            background: "rgba(255,255,255,0.35)",
           }}
         />
       )}
-      <figcaption style={{ marginTop: 6, textAlign: "center", fontSize: 16, lineHeight: 1.15, minHeight: 20 }}>
+      <figcaption style={{ marginTop: 6, textAlign: "center", fontSize: 16, lineHeight: 1.15 }}>
         {name ?? ""}
       </figcaption>
     </figure>
@@ -265,8 +265,6 @@ export function PassportSpread({
   heroImage,
   heroName,
   showingBack = false,
-  buckets,
-  average,
   highlights,
   deckUrl,
   qrDataUrl,
@@ -277,14 +275,14 @@ export function PassportSpread({
   playstyles,
 }: PassportSpreadProps) {
   const pips = colors.length > 0 ? colors : showColorless ? (["C"] as const) : [];
-  const maxBucket = Math.max(1, ...buckets);
   const credit = byline?.replace(/^by\s+/i, "").trim();
   const power = commanderDeck ? Math.max(0, Math.min(5, bracket ?? 0)) : 0;
   const shown = highlights.slice(0, 3);
-  const rotations = [-1.6, 1.3, -0.8];
+  const rotations = [-1.4, 1.1, -0.7];
   const pinned = shown.length
     ? shown
     : [undefined, undefined, undefined].map(() => ({ name: undefined, imageUrl: undefined }));
+  const titleSize = deckName.length > 34 ? 52 : deckName.length > 22 ? 64 : 78;
 
   return (
     <article
@@ -292,251 +290,167 @@ export function PassportSpread({
         width: POSTER_WIDTH,
         height: POSTER_HEIGHT,
         boxSizing: "border-box",
+        padding: 16,
         display: "flex",
-        background: "radial-gradient(circle at 18% 0%, #4a3022 0%, #2a1b12 46%, #1a100c 100%)",
+        background: FRAME,
         fontFamily: TYPE,
         color: INK,
-        padding: 12,
       }}
     >
-      <section
+      <div
         style={{
           flex: 1,
           minWidth: 0,
           background: PAPER,
-          borderRadius: "14px 4px 4px 14px",
-          padding: "12px 14px 8px",
+          borderRadius: 18,
+          padding: "16px 18px 14px",
           display: "flex",
           flexDirection: "column",
-          position: "relative",
           overflow: "hidden",
         }}
       >
         <header style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-          <p style={{ margin: 0, letterSpacing: "0.16em", fontSize: 18 }}>DECK PASSPORT</p>
-          <p style={{ margin: 0, fontSize: 14 }}>No. {passportNo(deckUrl)}</p>
+          <p style={{ margin: 0, letterSpacing: "0.18em", fontSize: 18 }}>DECK PASSPORT</p>
+          <p style={{ margin: 0, fontSize: 15 }}>No. {passportNo(deckUrl)}</p>
         </header>
-        <div style={{ height: 1, background: RULE, margin: "8px 0 10px" }} />
+        <div style={{ height: 1, background: "rgba(26,49,72,0.16)", margin: "8px 0 12px" }} />
 
-        <div style={{ display: "flex", gap: 14, alignItems: "stretch", position: "relative" }}>
-          <div style={{ width: HERO_W, flex: "0 0 auto", position: "relative", zIndex: 1 }}>
-            {heroImage ? (
-              <img
-                alt={heroName ?? deckName}
-                src={mediaSrc(heroImage)}
-                style={{
-                  width: HERO_W,
-                  height: HERO_H,
-                  objectFit: "cover",
-                  borderRadius: 6,
-                  background: "#d9d0bc",
-                  boxShadow: "0 8px 18px rgba(42, 33, 24, 0.2)",
-                }}
-              />
-            ) : (
-              <div
-                style={{
-                  width: HERO_W,
-                  height: HERO_H,
-                  borderRadius: 6,
-                  border: "1px dashed rgba(42,33,24,0.35)",
-                  display: "flex",
-                  alignItems: "flex-end",
-                  boxSizing: "border-box",
-                  padding: 14,
-                  color: "#6d6254",
-                }}
-              >
-                {heroName ?? "Commander"}
+        <div style={{ flex: 1, minHeight: 0, display: "flex", gap: 18 }}>
+          <section style={{ width: 900, flex: "0 0 auto", display: "flex", flexDirection: "column", minHeight: 0 }}>
+            <div style={{ position: "relative", height: HERO_H }}>
+              <div style={{ width: HERO_W, position: "relative", zIndex: 1 }}>
+                {heroImage ? (
+                  <img
+                    alt={heroName ?? deckName}
+                    src={mediaSrc(heroImage)}
+                    style={{
+                      width: HERO_W,
+                      height: HERO_H,
+                      objectFit: "cover",
+                      borderRadius: 10,
+                      background: "#d5e4f2",
+                      boxShadow: "0 10px 22px rgba(26, 49, 72, 0.18)",
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: HERO_W,
+                      height: HERO_H,
+                      borderRadius: 10,
+                      border: "1px dashed rgba(26,49,72,0.35)",
+                      display: "flex",
+                      alignItems: "flex-end",
+                      boxSizing: "border-box",
+                      padding: 16,
+                      color: "#5d7590",
+                    }}
+                  >
+                    {heroName ?? "Commander"}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+              <div style={{ position: "absolute", left: HERO_W - 64, top: 28, zIndex: 2 }}>
+                <DeckTypeStamp label={formatLabel.toUpperCase()} />
+              </div>
+              <div style={{ position: "absolute", left: HERO_W - 28, top: 230, zIndex: 3 }}>
+                <PlaystyleStamp styles={playstyles} />
+              </div>
+              {power > 0 ? (
+                <div style={{ position: "absolute", left: HERO_W - 8, top: 392, zIndex: 4 }}>
+                  <PowerStamps count={power} caption={bracketName(bracket)?.toUpperCase()} />
+                </div>
+              ) : null}
+            </div>
 
-          <div style={{ flex: 1, minWidth: 0, position: "relative", zIndex: 2, paddingTop: 2 }}>
+            <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 18, minHeight: 0, paddingTop: 12 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ margin: 0, fontSize: 42, lineHeight: 1 }}>Deck List</p>
+                <p
+                  style={{
+                    margin: "8px 0 0",
+                    fontSize: 16,
+                    lineHeight: 1.3,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {deckUrl ? displayUrl(deckUrl) : "Deck link appears here"}
+                </p>
+              </div>
+              {qrDataUrl ? (
+                <img
+                  alt="QR code linking to the deck"
+                  src={qrDataUrl}
+                  style={{ width: QR, height: QR, background: "#fff", borderRadius: 8, flex: "0 0 auto" }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: QR,
+                    height: QR,
+                    border: "1px dashed rgba(26,49,72,0.28)",
+                    borderRadius: 8,
+                    flex: "0 0 auto",
+                  }}
+                />
+              )}
+            </div>
+          </section>
+
+          <section style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
             {pips.length > 0 ? (
-              <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+              <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
                 {pips.map((color) => (
-                  <img key={color} alt={color === "C" ? "Colorless" : color} src={PIP_SRC[color]} style={{ width: 28, height: 28 }} />
+                  <img key={color} alt={color === "C" ? "Colorless" : color} src={PIP_SRC[color]} style={{ width: 36, height: 36 }} />
                 ))}
               </div>
             ) : null}
             <h2
               style={{
                 margin: 0,
-                fontSize: deckName.length > 32 ? 28 : 34,
-                lineHeight: 1.02,
+                fontSize: titleSize,
+                lineHeight: 0.98,
                 fontWeight: 400,
               }}
             >
               {deckName}
             </h2>
-            <p style={{ margin: "8px 0 0", fontSize: 16, lineHeight: 1.25 }}>
+            <p style={{ margin: "10px 0 0", fontSize: 20, lineHeight: 1.25 }}>
               {commanderDeck ? commanderName || "Commander" : formatLabel}
               {showingBack ? " · back face" : ""}
+              {credit ? ` · ${credit}` : ""}
             </p>
-            {partnerLine ? <p style={{ margin: "4px 0 0", fontSize: 14 }}>{partnerLine}</p> : null}
-            {credit ? <p style={{ margin: "4px 0 0", fontSize: 14 }}>Issued to {credit}</p> : null}
-
-            <div style={{ position: "absolute", left: -58, top: 152, zIndex: 2 }}>
-              <DeckTypeStamp label={formatLabel.toUpperCase()} />
-            </div>
-            {power > 0 ? (
-              <div style={{ position: "absolute", right: 28, bottom: 108, zIndex: 3 }}>
-                <PowerStamps count={power} caption={bracketName(bracket)?.toUpperCase()} />
-              </div>
-            ) : null}
-          </div>
-        </div>
-
-        <section style={{ marginTop: 2, flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-            <p style={{ margin: 0, fontSize: 18, letterSpacing: "0.16em" }}>CMC BREAKDOWN</p>
-            <p style={{ margin: 0, fontSize: 24 }}>AVG {formatAverage(average)}</p>
-          </div>
-          <div
-            style={{
-              marginTop: 6,
-              flex: 1,
-              minHeight: 220,
-              display: "grid",
-              gridTemplateColumns: "repeat(8, 1fr)",
-              gap: 12,
-              alignItems: "stretch",
-            }}
-          >
-            {buckets.map((count, index) => (
-              <div key={index} style={{ display: "flex", flexDirection: "column", alignItems: "center", height: "100%", minHeight: 0 }}>
-                <div style={{ flex: count === 0 ? 1 : Math.max(0, maxBucket - count), minHeight: 0 }} />
-                <span style={{ flex: "0 0 auto", fontSize: 18, lineHeight: 1, marginBottom: 6 }}>{count}</span>
-                <div
-                  style={{
-                    width: "100%",
-                    flex: count === 0 ? "0 0 6px" : `${Math.max(count, 0.35)} 1 0`,
-                    minHeight: count === 0 ? 6 : 20,
-                    background: count === 0 ? "rgba(42,33,24,0.16)" : "#1e4b7a",
-                    borderRadius: 3,
-                  }}
-                />
-              </div>
-            ))}
-          </div>
-          <div
-            style={{
-              marginTop: 6,
-              display: "grid",
-              gridTemplateColumns: "repeat(8, 1fr)",
-              textAlign: "center",
-              fontSize: 16,
-            }}
-          >
-            {["0", "1", "2", "3", "4", "5", "6", "7+"].map((label) => (
-              <span key={label}>{label}</span>
-            ))}
-          </div>
-        </section>
-      </section>
-
-      <div
-        style={{
-          width: 22,
-          background: "linear-gradient(90deg, rgba(0,0,0,0.28), rgba(255,255,255,0.08) 45%, rgba(0,0,0,0.35))",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-evenly",
-          alignItems: "center",
-        }}
-      >
-        {Array.from({ length: 8 }, (_, index) => (
-          <span
-            key={index}
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: "50%",
-              background: "#c8b89a",
-              boxShadow: "0 0 0 2px rgba(42,33,24,0.35)",
-            }}
-          />
-        ))}
-      </div>
-
-      <section
-        style={{
-          flex: 1,
-          minWidth: 0,
-          background: PAPER,
-          borderRadius: "4px 14px 14px 4px",
-          padding: "12px 14px 8px",
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-        }}
-      >
-        <header style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-          <p style={{ margin: 0, letterSpacing: "0.16em", fontSize: 18 }}>NOTES</p>
-          <p style={{ margin: 0, fontSize: 14 }}>{formatLabel}</p>
-        </header>
-        <div style={{ height: 1, background: RULE, margin: "8px 0 10px" }} />
-
-        <div style={{ position: "relative", minHeight: 132 }}>
-          <div style={{ position: "absolute", top: -4, right: -4 }}>
-            <PlaystyleStamp styles={playstyles} />
-          </div>
-          <p
-            style={{
-              margin: 0,
-              maxWidth: 560,
-              fontSize: 24,
-              lineHeight: 1.28,
-              whiteSpace: "pre-wrap",
-            }}
-          >
-            {description || "Type a short description of how this deck plays."}
-          </p>
-        </div>
-
-        <section style={{ marginTop: 4, flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
-          <p style={{ margin: "0 0 4px", fontSize: 16, letterSpacing: "0.16em" }}>SPOTLIGHT CARDS</p>
-          <div style={{ display: "flex", justifyContent: "center", alignItems: "flex-start" }}>
-            {pinned.map((card, index) => (
-              <PinnedCard
-                key={`${card?.name ?? "empty"}-${index}`}
-                name={card?.name}
-                imageUrl={card?.imageUrl}
-                index={index}
-                rotation={rotations[index] ?? 0}
-              />
-            ))}
-          </div>
-        </section>
-
-        <footer style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 2 }}>
-          <div style={{ minWidth: 0 }}>
-            <p style={{ margin: 0, fontSize: 15 }}>Explore the full deck</p>
+            {partnerLine ? <p style={{ margin: "4px 0 0", fontSize: 16 }}>{partnerLine}</p> : null}
             <p
               style={{
-                margin: "3px 0 0",
-                fontSize: 13,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-                maxWidth: 520,
+                margin: "16px 0 0",
+                fontSize: 26,
+                lineHeight: 1.32,
+                whiteSpace: "pre-wrap",
               }}
             >
-              {deckUrl ? displayUrl(deckUrl) : "Deck link appears here"}
+              {description || "Type a short description of how this deck plays."}
             </p>
-          </div>
-          {qrDataUrl ? (
-            <img
-              alt="QR code linking to the deck"
-              src={qrDataUrl}
-              style={{ width: 72, height: 72, background: "#fff", borderRadius: 4, flex: "0 0 auto" }}
-            />
-          ) : (
-            <div style={{ width: 72, height: 72, border: "1px dashed rgba(42,33,24,0.28)", flex: "0 0 auto" }} />
-          )}
-        </footer>
-      </section>
+
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", minHeight: 0, paddingTop: 12 }}>
+              <p style={{ margin: "0 0 8px", fontSize: 16, letterSpacing: "0.16em" }}>SPOTLIGHT CARDS</p>
+              <div style={{ display: "flex", alignItems: "flex-start" }}>
+                {pinned.map((card, index) => (
+                  <PinnedCard
+                    key={`${card?.name ?? "empty"}-${index}`}
+                    name={card?.name}
+                    imageUrl={card?.imageUrl}
+                    index={index}
+                    rotation={rotations[index] ?? 0}
+                  />
+                ))}
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
     </article>
   );
 }

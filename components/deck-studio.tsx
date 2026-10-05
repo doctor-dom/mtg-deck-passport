@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { BRACKETS } from "@/lib/bracket";
 import { specFromCard } from "@/lib/card-spec";
-import { manaCurve } from "@/lib/mana-curve";
 import { PLAYSTYLES, togglePlaystyle, type Playstyle } from "@/lib/playstyle";
 import { defaultPrintingId, printingOptionLabel } from "@/lib/printings";
 import type { DeckCard, NormalizedDeck, ResolvedPrinting } from "@/lib/types";
@@ -240,7 +239,6 @@ export function DeckStudio() {
     });
   }
 
-  const curve = useMemo(() => manaCurve(deck?.cards ?? []), [deck]);
   const face = commanders[faceIndex] ?? commanders[0];
   const facePrinting = face?.printings.find((printing) => printing.id === face.selectedId);
   const firstSpotlight = slots.find((slot) => slot.card)?.card;
@@ -294,8 +292,6 @@ export function DeckStudio() {
           : (heroPrinting?.name ?? heroFallback?.name ?? firstSpotlight?.name)
       }
       showingBack={showingBack}
-      buckets={curve.buckets}
-      average={curve.average}
       highlights={highlights}
       deckUrl={deck?.url}
       qrDataUrl={deck?.qrDataUrl}
@@ -318,7 +314,7 @@ export function DeckStudio() {
         width: POSTER_WIDTH,
         height: POSTER_HEIGHT,
         scale: 2,
-        backgroundColor: "#24170f",
+        backgroundColor: "#c9dff3",
         style: { transform: "none", transformOrigin: "top left" },
       });
       const link = document.createElement("a");
@@ -345,9 +341,9 @@ export function DeckStudio() {
             Turn a deck link into an open passport.
           </h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Paste a Moxfield, Archidekt, or ManaBox deck. The left page carries the commander, the
-            deck name, and the mana curve. The right page carries your description and up to three
-            spotlight cards.
+            Paste a Moxfield, Archidekt, or ManaBox deck. The commander side carries the card, every
+            stamp, and a deck-list QR. The other side carries the title, your description, and up to
+            three spotlight cards.
           </p>
         </div>
 
