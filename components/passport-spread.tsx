@@ -15,7 +15,6 @@ const FRAME = "#c9dff3";
 const STAMP_INK = "rgba(30, 75, 122, 0.78)";
 const STAMP_EDGE = "rgba(30, 75, 122, 0.34)";
 const STAMP_FILL = "rgba(231, 242, 252, 0.14)";
-const STAMP_HEX = "#1e4b7a";
 const PLAY_INK = "rgba(16, 99, 48, 0.82)";
 const PLAY_EDGE = "rgba(21, 122, 58, 0.38)";
 const PLAY_FILL = "rgba(214, 242, 222, 0.16)";
@@ -23,6 +22,9 @@ const POWER_INK = "rgba(156, 43, 43, 0.78)";
 const POWER_EDGE = "rgba(156, 43, 43, 0.36)";
 const POWER_FILL = "rgba(252, 236, 236, 0.14)";
 const POWER_HEX = "#9c2b2b";
+const GOLD = "#7a5b12";
+const GOLD_FILL = "#f6e3a1";
+const GOLD_EDGE = "#6e5310";
 
 const PIP_SRC: Record<ManaColor | "C", string> = {
   W: "/mana/W.svg",
@@ -93,13 +95,13 @@ function symbolSrc(code: string, ink: string): string {
   return `/api/set-symbol/${encodeURIComponent(code.toLowerCase())}?ink=${encodeURIComponent(ink)}`;
 }
 
-function SetMark({ code, ink, size }: { code?: string; ink: string; size: number }) {
+function SetMark({ code, ink, size, opaque = false }: { code?: string; ink: string; size: number; opaque?: boolean }) {
   if (!code) return null;
   return (
     <img
       alt=""
       src={symbolSrc(code, ink)}
-      style={{ width: size, height: size, objectFit: "contain", flex: "0 0 auto", opacity: 0.8 }}
+      style={{ width: size, height: size, objectFit: "contain", flex: "0 0 auto", opacity: opaque ? 1 : 0.8 }}
     />
   );
 }
@@ -117,8 +119,8 @@ function textUnits(value: string): number {
   return Math.max(units, 1);
 }
 
-function DeckTypeStamp({ label, setCode }: { label: string; setCode?: string }) {
-  const size = label.length > 14 ? 32 : label.length > 10 ? 40 : 48;
+function DeckTypeStamp({ label }: { label: string }) {
+  const size = label.length > 14 ? 36 : label.length > 10 ? 46 : 56;
   return (
     <div
       style={{
@@ -130,7 +132,6 @@ function DeckTypeStamp({ label, setCode }: { label: string; setCode?: string }) 
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        transform: "rotate(-7deg)",
         background: STAMP_FILL,
         boxShadow: "inset 0 0 0 3px " + STAMP_EDGE,
         fontFamily: TYPE,
@@ -147,17 +148,47 @@ function DeckTypeStamp({ label, setCode }: { label: string; setCode?: string }) 
           alignItems: "center",
           justifyContent: "center",
           textAlign: "center",
-          padding: "6px 28px",
+          padding: "8px 36px",
           boxSizing: "border-box",
-          gap: 6,
+          gap: 8,
         }}
       >
         <div style={{ fontSize: 18, letterSpacing: "0.32em", lineHeight: 1, flex: "0 0 auto" }}>VISA</div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, flex: "0 0 auto" }}>
-          <SetMark code={setCode} ink={STAMP_HEX} size={128} />
-          <div style={{ fontSize: size, lineHeight: 0.95, maxWidth: 300, textAlign: "left", flex: "0 0 auto" }}>{label}</div>
-        </div>
+        <div style={{ fontSize: size, lineHeight: 0.95, flex: "0 0 auto" }}>{label}</div>
         <div style={{ fontSize: 18, letterSpacing: "0.2em", lineHeight: 1, flex: "0 0 auto" }}>ADMITTED</div>
+      </div>
+    </div>
+  );
+}
+
+function SetSymbolStamp({ code }: { code?: string }) {
+  if (!code) return null;
+  return (
+    <div
+      style={{
+        width: 150,
+        height: 150,
+        borderRadius: "50%",
+        border: "8px solid " + GOLD_EDGE,
+        background: GOLD_FILL,
+        boxShadow: "inset 0 0 0 3px " + GOLD_EDGE,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        transform: "rotate(-18deg)",
+      }}
+    >
+      <SetMark code={code} ink={GOLD} size={92} opaque />
+    </div>
+  );
+}
+
+function CommanderVisa({ label, setCode, rotate }: { label: string; setCode?: string; rotate: number }) {
+  return (
+    <div style={{ position: "relative", width: 640, height: 292, transform: `rotate(${rotate}deg)` }}>
+      <DeckTypeStamp label={label} />
+      <div style={{ position: "absolute", left: 245, top: -58, zIndex: 5 }}>
+        <SetSymbolStamp code={setCode} />
       </div>
     </div>
   );
@@ -429,12 +460,13 @@ export function PassportSpread({
     ? shown
     : [undefined, undefined, undefined].map(() => ({ name: undefined, imageUrl: undefined }));
   const dual = Boolean(backImage);
-  const frontW = dual ? 418 : HERO_W;
-  const frontH = dual ? 584 : HERO_H;
-  const backW = 280;
-  const backH = 392;
-  const leftCol = dual ? frontW + 16 + backW + 12 : LEFT_COL;
-  const textInset = dual ? 18 : TEXT_INSET;
+  const frontW = HERO_W;
+  const frontH = HERO_H;
+  const backW = 214;
+  const backH = 276;
+  const leftCol = LEFT_COL;
+  const textInset = TEXT_INSET;
+  const heroBox = dual ? 900 : HERO_H;
   const rightWidth = POSTER_WIDTH - 16 * 2 - 18 * 2 - leftCol - COL_GAP - textInset;
   const titleSize = Math.max(42, Math.min(92, Math.floor((rightWidth - 8) / textUnits(deckName))));
   const notes = description?.trim() || "Type a short description of how this deck plays.";
@@ -470,18 +502,8 @@ export function PassportSpread({
       >
         <div style={{ flex: 1, minHeight: 0, display: "flex", gap: COL_GAP }}>
           <section style={{ width: leftCol, flex: "0 0 auto", display: "flex", flexDirection: "column", minHeight: 0, position: "relative", zIndex: 1 }}>
-            {dual ? (
-              <div style={{ position: "relative", height: 196, flex: "0 0 auto" }}>
-                <div style={{ position: "absolute", left: 0, top: 8, transform: "scale(0.58)", transformOrigin: "top left" }}>
-                  <DeckTypeStamp label={formatLabel.toUpperCase()} setCode={setCode} />
-                </div>
-                <div style={{ position: "absolute", left: 360, top: 36, transform: "scale(0.72)", transformOrigin: "top left" }}>
-                  <PlaystyleStamp styles={playstyles} />
-                </div>
-              </div>
-            ) : null}
-            <div style={{ position: "relative", height: frontH, flex: "0 0 auto" }}>
-              <div style={{ width: frontW, position: "relative", zIndex: 1 }}>
+            <div style={{ position: "relative", height: heroBox, flex: "0 0 auto" }}>
+              <div style={{ width: frontW, position: "relative", zIndex: 1, marginTop: dual ? 86 : 0 }}>
                 {heroImage ? (
                   <img
                     alt={heroName ?? deckName}
@@ -519,44 +541,33 @@ export function PassportSpread({
                   src={mediaSrc(backImage)}
                   style={{
                     position: "absolute",
-                    left: frontW + 16,
-                    top: (frontH - backH) / 2,
+                    left: frontW + 36,
+                    top: 392,
                     width: backW,
                     height: backH,
                     objectFit: "cover",
                     borderRadius: 10,
                     background: "#d5e4f2",
                     boxShadow: "0 10px 22px rgba(26, 49, 72, 0.2)",
-                    zIndex: 2,
+                    zIndex: 4,
                   }}
                 />
               ) : null}
-              {dual ? null : (
-                <>
-                  <div style={{ position: "absolute", left: HERO_W - 210, top: 70, zIndex: 2 }}>
-                    <DeckTypeStamp label={formatLabel.toUpperCase()} setCode={setCode} />
-                  </div>
-                  <div style={{ position: "absolute", left: HERO_W - 110, top: 360, zIndex: 3 }}>
-                    <PlaystyleStamp styles={playstyles} />
-                  </div>
-                  {power > 0 ? (
-                    <div style={{ position: "absolute", left: HERO_W + 8, top: 524, zIndex: 4 }}>
-                      <PowerStamps count={power} caption={levelLine} />
-                    </div>
-                  ) : null}
-                </>
-              )}
-            </div>
-            {dual && power > 0 ? (
-              <div style={{ position: "relative", height: 136, flex: "0 0 auto", marginTop: 6 }}>
-                <div style={{ position: "absolute", left: 0, top: 0, transform: "scale(0.66)", transformOrigin: "top left" }}>
+              <div style={{ position: "absolute", left: dual ? 348 : 336, top: dual ? 64 : 48, zIndex: 3 }}>
+                <CommanderVisa label={formatLabel.toUpperCase()} setCode={setCode} rotate={dual ? 18 : 13} />
+              </div>
+              <div style={{ position: "absolute", left: dual ? HERO_W - 96 : HERO_W - 110, top: dual ? 734 : 360, zIndex: 3 }}>
+                <PlaystyleStamp styles={playstyles} />
+              </div>
+              {power > 0 ? (
+                <div style={{ position: "absolute", left: dual ? HERO_W + 36 : HERO_W + 8, top: dual ? 790 : 524, zIndex: 4 }}>
                   <PowerStamps count={power} caption={levelLine} />
                 </div>
-              </div>
-            ) : null}
+              ) : null}
+            </div>
 
             <div style={{ flex: 1, display: "flex", alignItems: "center", minHeight: 0, paddingTop: 8 }}>
-              <DeckLink deckUrl={deckUrl} qrDataUrl={qrDataUrl} width={frontW} qrSize={dual ? (power > 0 ? 168 : 248) : QR} />
+              <DeckLink deckUrl={deckUrl} qrDataUrl={qrDataUrl} width={frontW} qrSize={dual ? 200 : QR} />
             </div>
           </section>
 
