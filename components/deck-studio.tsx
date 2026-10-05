@@ -68,6 +68,7 @@ export function DeckStudio() {
   const [playstyles, setPlaystyles] = useState<Playstyle[]>([]);
   const [endorsements, setEndorsements] = useState("");
   const [showBack, setShowBack] = useState(false);
+  const [showPartner, setShowPartner] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [scale, setScale] = useState(0.42);
@@ -214,6 +215,7 @@ export function DeckStudio() {
       setPlaystyles([]);
       setEndorsements("");
       setShowBack(false);
+      setShowPartner(true);
       setCommanders(
         data.deck.commanders.map((card) => ({
           card,
@@ -260,12 +262,15 @@ export function DeckStudio() {
   const showingBack = Boolean(showBack && facePrinting?.backImageUrl);
   const heroPrinting = hasCommander ? facePrinting : firstSpotlight;
   const heroFallback = hasCommander ? face?.card : undefined;
+  const faceIdx = commanders[faceIndex] ? faceIndex : 0;
+  const otherCommanders = commanders.filter((_, index) => index !== faceIdx);
+  const partnerChoice = otherCommanders[0];
+  const partnerPrinting = partnerChoice?.printings.find((printing) => printing.id === partnerChoice.selectedId);
+  const partnerImage = partnerPrinting?.imageUrl || partnerChoice?.card.imageUrl;
+  const showingPartner = Boolean(!showingBack && showPartner && partnerImage);
   const partnerLine =
-    commanders.length > 1
-      ? `with ${commanders
-          .filter((_, index) => index !== (commanders[faceIndex] ? faceIndex : 0))
-          .map((entry) => entry.card.name)
-          .join(" & ")}`
+    otherCommanders.length > 0
+      ? `with ${otherCommanders.map((entry) => entry.card.name).join(" & ")}`
       : undefined;
   const highlights = slots
     .filter((slot) => slot.card)
@@ -296,8 +301,8 @@ export function DeckStudio() {
       showColorless={deck != null && deck.colorIdentity.length === 0}
       heroImage={heroPrinting?.imageUrl ?? heroFallback?.imageUrl}
       heroName={heroPrinting?.name ?? heroFallback?.name ?? firstSpotlight?.name}
-      backImage={showingBack ? facePrinting?.backImageUrl : undefined}
-      backName={showingBack ? facePrinting?.backName : undefined}
+      backImage={showingBack ? facePrinting?.backImageUrl : showingPartner ? partnerImage : undefined}
+      backName={showingBack ? facePrinting?.backName : showingPartner ? partnerChoice?.card.name : undefined}
       showingBack={showingBack}
       highlights={highlights}
       deckUrl={deck?.url}
@@ -353,8 +358,8 @@ export function DeckStudio() {
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
             Paste a Moxfield, Archidekt, or ManaBox deck. The commander side carries the card, the
             visas, and a QR code centered under the commander. The other side carries the title,
-            passport fields, and up to three spotlight cards. Double-faced commanders can show the
-            other face in the margin beside the front.
+            passport fields, and up to three spotlight cards. A double-faced back or a partner
+            commander can sit in the margin beside the front, at the same size as a spotlight card.
           </p>
         </div>
 
@@ -536,6 +541,23 @@ export function DeckStudio() {
                     ))}
                   </fieldset>
                 ) : null}
+                {commanders.length > 1 ? (
+                  <div className="grid gap-1">
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        id="show-partner"
+                        type="checkbox"
+                        checked={showPartner}
+                        onChange={(event) => setShowPartner(event.target.checked)}
+                      />
+                      Show the partner beside the commander
+                      {partnerChoice ? ` (${partnerChoice.card.name})` : ""}
+                    </label>
+                    <p className="text-sm text-muted-foreground">
+                      The partner uses the same margin as a double-faced back, with the deck visas above and below it. If the back face is also shown, the back face keeps that spot.
+                    </p>
+                  </div>
+                ) : null}
                 {commanders.map((entry, index) => (
                   <div key={entry.card.name} className="grid gap-1.5">
                     <Label htmlFor={`printing-${index}`}>{entry.card.name}</Label>
@@ -580,7 +602,7 @@ export function DeckStudio() {
                       {facePrinting.backName ? ` (${facePrinting.backName})` : ""}
                     </label>
                     <p className="text-sm text-muted-foreground">
-                      The other face sits in the margin. Deck visas sit above and below that back face. The made-by visa stays beside the passport text.
+                      The other face sits in the margin at spotlight size. Deck visas sit above and below it, and the QR stays large under the front face. The made-by visa stays beside the passport text.
                     </p>
                   </div>
                 ) : null}

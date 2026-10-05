@@ -41,7 +41,7 @@ const SPOT_W = 340;
 const SPOT_H = 475;
 const QR = 328;
 const COMMANDER_SYMBOL = "c14";
-const LEFT_COL = 740;
+const LEFT_COL = 850;
 const COL_GAP = 8;
 const TEXT_INSET = 72;
 
@@ -102,6 +102,10 @@ function SetMark({ code, ink, size, opaque = false }: { code?: string; ink: stri
       alt=""
       src={symbolSrc(code, ink)}
       style={{ width: size, height: size, objectFit: "contain", flex: "0 0 auto", opacity: opaque ? 1 : 0.8 }}
+      onError={(event) => {
+        const stamp = event.currentTarget.closest("[data-set-stamp]");
+        if (stamp instanceof HTMLElement) stamp.style.display = "none";
+      }}
     />
   );
 }
@@ -165,6 +169,7 @@ function SetSymbolStamp({ code }: { code?: string }) {
   if (!code) return null;
   return (
     <div
+      data-set-stamp=""
       style={{
         width: 150,
         height: 150,
@@ -183,11 +188,21 @@ function SetSymbolStamp({ code }: { code?: string }) {
   );
 }
 
-function CommanderVisa({ label, setCode, rotate }: { label: string; setCode?: string; rotate: number }) {
+function CommanderVisa({
+  label,
+  setCode,
+  rotate,
+  symbolTop = -58,
+}: {
+  label: string;
+  setCode?: string;
+  rotate: number;
+  symbolTop?: number;
+}) {
   return (
     <div style={{ position: "relative", width: 640, height: 292, transform: `rotate(${rotate}deg)` }}>
       <DeckTypeStamp label={label} />
-      <div style={{ position: "absolute", left: 245, top: -58, zIndex: 5 }}>
+      <div style={{ position: "absolute", left: 245, top: symbolTop, zIndex: 5 }}>
         <SetSymbolStamp code={setCode} />
       </div>
     </div>
@@ -255,25 +270,40 @@ function MakerStamp() {
   return (
     <div
       style={{
-        width: 468,
-        height: 222,
+        position: "relative",
+        width: 500,
+        height: 252,
         borderRadius: "50%",
-        border: "7px solid " + STAMP_EDGE,
+        border: "8px solid " + STAMP_EDGE,
         color: STAMP_INK,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
         transform: "rotate(4deg)",
         background: STAMP_FILL,
-        boxShadow: "inset 0 0 0 2px " + STAMP_EDGE,
+        boxShadow: "inset 0 0 0 3px " + STAMP_EDGE,
         fontFamily: TYPE,
         flex: "0 0 auto",
       }}
     >
       <div
         style={{
-          width: 400,
-          height: 160,
+          position: "absolute",
+          top: 18,
+          left: 70,
+          right: 70,
+          textAlign: "center",
+          fontSize: 26,
+          letterSpacing: "0.18em",
+          lineHeight: 1,
+        }}
+      >
+        made by:
+      </div>
+      <div
+        style={{
+          position: "absolute",
+          top: 64,
+          left: 46,
+          width: 408,
+          height: 156,
           borderRadius: "50%",
           border: "2px solid " + STAMP_EDGE,
           display: "flex",
@@ -281,13 +311,13 @@ function MakerStamp() {
           alignItems: "center",
           justifyContent: "center",
           textAlign: "center",
-          padding: "4px 18px",
           boxSizing: "border-box",
-          gap: 4,
+          padding: "10px 18px 6px",
+          gap: 2,
         }}
       >
-        <div style={{ fontSize: 18, letterSpacing: "0.24em", lineHeight: 1, flex: "0 0 auto" }}>made by:</div>
-        <div style={{ fontSize: 28, lineHeight: 1.05, flex: "0 0 auto" }}>MTG Deck Passport</div>
+        <div style={{ fontSize: 50, lineHeight: 0.88 }}>MTG</div>
+        <div style={{ fontSize: 36, lineHeight: 1 }}>Deck Passport</div>
       </div>
     </div>
   );
@@ -462,16 +492,27 @@ export function PassportSpread({
   const dual = Boolean(backImage);
   const frontW = HERO_W;
   const frontH = HERO_H;
-  const backW = 214;
-  const backH = 276;
+  const sideW = SPOT_W;
+  const sideH = SPOT_H;
   const leftCol = LEFT_COL;
   const textInset = TEXT_INSET;
-  const heroBox = dual ? 900 : HERO_H;
+  const heroBox = HERO_H;
   const rightWidth = POSTER_WIDTH - 16 * 2 - 18 * 2 - leftCol - COL_GAP - textInset;
   const titleSize = Math.max(42, Math.min(92, Math.floor((rightWidth - 8) / textUnits(deckName))));
   const notes = description?.trim() || "Type a short description of how this deck plays.";
   const notesSize = Math.max(34, Math.min(50, Math.round((rightWidth * 3.4) / textUnits(notes))));
-  const makerCol = Math.max(520, rightWidth - 600);
+  const makerCol = Math.max(540, rightWidth - 480);
+  const fieldWidth = rightWidth - makerCol - 12;
+  const passportName =
+    (showingBack ? (commanderName || heroName || "").split(" // ")[0]?.trim() : undefined) ||
+    commanderName ||
+    heroName ||
+    formatLabel;
+  const fieldSize = (value: string | undefined, max = 40) =>
+    Math.max(28, Math.min(max, Math.floor((fieldWidth - 8) / textUnits(value?.trim() || "—"))));
+  const sideLeft = frontW + 34;
+  const sideTop = 262;
+  const powerWidth = 112 + Math.max(0, power - 1) * 78;
   const levelLine =
     power > 0 ? `Level ${power} — ${bracketName(bracket) ?? "Unrated"}` : undefined;
 
@@ -503,7 +544,7 @@ export function PassportSpread({
         <div style={{ flex: 1, minHeight: 0, display: "flex", gap: COL_GAP }}>
           <section style={{ width: leftCol, flex: "0 0 auto", display: "flex", flexDirection: "column", minHeight: 0, position: "relative", zIndex: 1 }}>
             <div style={{ position: "relative", height: heroBox, flex: "0 0 auto" }}>
-              <div style={{ width: frontW, position: "relative", zIndex: 1, marginTop: dual ? 86 : 0 }}>
+              <div style={{ width: frontW, position: "relative", zIndex: 1 }}>
                 {heroImage ? (
                   <img
                     alt={heroName ?? deckName}
@@ -537,14 +578,14 @@ export function PassportSpread({
               </div>
               {dual && backImage ? (
                 <img
-                  alt={backName || "Back face"}
+                  alt={backName || "Partner"}
                   src={mediaSrc(backImage)}
                   style={{
                     position: "absolute",
-                    left: frontW + 36,
-                    top: 392,
-                    width: backW,
-                    height: backH,
+                    left: sideLeft,
+                    top: sideTop,
+                    width: sideW,
+                    height: sideH,
                     objectFit: "cover",
                     borderRadius: 10,
                     background: "#d5e4f2",
@@ -553,21 +594,28 @@ export function PassportSpread({
                   }}
                 />
               ) : null}
-              <div style={{ position: "absolute", left: dual ? 348 : 336, top: dual ? 64 : 48, zIndex: 3 }}>
-                <CommanderVisa label={formatLabel.toUpperCase()} setCode={setCode} rotate={dual ? 18 : 13} />
+              <div style={{ position: "absolute", left: 336, top: 48, zIndex: 3 }}>
+                <CommanderVisa label={formatLabel.toUpperCase()} setCode={setCode} rotate={13} />
               </div>
-              <div style={{ position: "absolute", left: dual ? HERO_W - 96 : HERO_W - 110, top: dual ? 734 : 360, zIndex: 3 }}>
+              <div style={{ position: "absolute", left: dual ? 472 : HERO_W - 110, top: dual ? 748 : 360, zIndex: 3 }}>
                 <PlaystyleStamp styles={playstyles} />
               </div>
               {power > 0 ? (
-                <div style={{ position: "absolute", left: dual ? HERO_W + 36 : HERO_W + 8, top: dual ? 790 : 524, zIndex: 4 }}>
+                <div
+                  style={{
+                    position: "absolute",
+                    left: dual ? Math.min(sideLeft + 8, 900 - powerWidth) : HERO_W + 8,
+                    top: dual ? 888 : 524,
+                    zIndex: 4,
+                  }}
+                >
                   <PowerStamps count={power} caption={levelLine} />
                 </div>
               ) : null}
             </div>
 
             <div style={{ flex: 1, display: "flex", alignItems: "center", minHeight: 0, paddingTop: 8 }}>
-              <DeckLink deckUrl={deckUrl} qrDataUrl={qrDataUrl} width={frontW} qrSize={dual ? 200 : QR} />
+              <DeckLink deckUrl={deckUrl} qrDataUrl={qrDataUrl} width={frontW} qrSize={QR} />
             </div>
           </section>
 
@@ -592,22 +640,13 @@ export function PassportSpread({
               {deckName}
             </h2>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: rightWidth - makerCol - 12, flex: "0 0 auto", minWidth: 0 }}>
-                <PassportField
-                  label="Passport name"
-                  value={
-                    (showingBack ? (commanderName || heroName || "").split(" // ")[0]?.trim() : undefined) ||
-                    commanderName ||
-                    heroName ||
-                    formatLabel
-                  }
-                  size={40}
-                />
+              <div style={{ width: fieldWidth, flex: "0 0 auto", minWidth: 0 }}>
+                <PassportField label="Passport name" value={passportName} size={fieldSize(passportName)} />
                 {showingBack && backName ? <p style={{ margin: "2px 0 0", fontSize: 22 }}>{backName}</p> : null}
                 {partnerLine ? <p style={{ margin: "2px 0 0", fontSize: 22 }}>{partnerLine}</p> : null}
                 {credit ? <p style={{ margin: "2px 0 0", fontSize: 22 }}>Issued to {credit}</p> : null}
-                <PassportField label="Place of birth" value={setName} size={40} />
-                <PassportField label="Endorsements" value={endorsements} size={40} />
+                <PassportField label="Place of birth" value={setName} size={fieldSize(setName)} />
+                <PassportField label="Endorsements" value={endorsements} size={fieldSize(endorsements)} />
               </div>
               <div
                 style={{
