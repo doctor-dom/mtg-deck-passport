@@ -580,7 +580,7 @@ export function DeckStudio() {
                       {facePrinting.backName ? ` (${facePrinting.backName})` : ""}
                     </label>
                     <p className="text-sm text-muted-foreground">
-                      The other face sits in the margin. Visas move above and below the pair.
+                      The other face sits in the margin. Deck visas move above and below the pair. The made-by visa stays beside the passport text.
                     </p>
                   </div>
                 ) : null}

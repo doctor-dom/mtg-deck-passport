@@ -224,8 +224,8 @@ function MakerStamp() {
   return (
     <div
       style={{
-        width: 392,
-        height: 186,
+        width: 468,
+        height: 222,
         borderRadius: "50%",
         border: "7px solid " + STAMP_EDGE,
         color: STAMP_INK,
@@ -241,8 +241,8 @@ function MakerStamp() {
     >
       <div
         style={{
-          width: 336,
-          height: 136,
+          width: 400,
+          height: 160,
           borderRadius: "50%",
           border: "2px solid " + STAMP_EDGE,
           display: "flex",
@@ -255,8 +255,8 @@ function MakerStamp() {
           gap: 4,
         }}
       >
-        <div style={{ fontSize: 15, letterSpacing: "0.22em", lineHeight: 1, flex: "0 0 auto" }}>made by:</div>
-        <div style={{ fontSize: 23, lineHeight: 1.05, flex: "0 0 auto" }}>MTG Deck Passport</div>
+        <div style={{ fontSize: 18, letterSpacing: "0.24em", lineHeight: 1, flex: "0 0 auto" }}>made by:</div>
+        <div style={{ fontSize: 28, lineHeight: 1.05, flex: "0 0 auto" }}>MTG Deck Passport</div>
       </div>
     </div>
   );
@@ -439,6 +439,7 @@ export function PassportSpread({
   const titleSize = Math.max(42, Math.min(92, Math.floor((rightWidth - 8) / textUnits(deckName))));
   const notes = description?.trim() || "Type a short description of how this deck plays.";
   const notesSize = Math.max(34, Math.min(50, Math.round((rightWidth * 3.4) / textUnits(notes))));
+  const makerCol = Math.max(520, rightWidth - 600);
   const levelLine =
     power > 0 ? `Level ${power} — ${bracketName(bracket) ?? "Unrated"}` : undefined;
 
@@ -546,29 +547,16 @@ export function PassportSpread({
                 </>
               )}
             </div>
-            {dual ? (
-              <div style={{ position: "relative", height: power > 0 ? 136 : 158, flex: "0 0 auto", marginTop: 6 }}>
-                {power > 0 ? (
-                  <div style={{ position: "absolute", left: 0, top: 0, transform: "scale(0.66)", transformOrigin: "top left" }}>
-                    <PowerStamps count={power} caption={levelLine} />
-                  </div>
-                ) : null}
-                <div
-                  style={{
-                    position: "absolute",
-                    left: power > 0 ? 292 : 12,
-                    top: 0,
-                    transform: `scale(${power > 0 ? 0.66 : 0.84})`,
-                    transformOrigin: "top left",
-                  }}
-                >
-                  <MakerStamp />
+            {dual && power > 0 ? (
+              <div style={{ position: "relative", height: 136, flex: "0 0 auto", marginTop: 6 }}>
+                <div style={{ position: "absolute", left: 0, top: 0, transform: "scale(0.66)", transformOrigin: "top left" }}>
+                  <PowerStamps count={power} caption={levelLine} />
                 </div>
               </div>
             ) : null}
 
             <div style={{ flex: 1, display: "flex", alignItems: "center", minHeight: 0, paddingTop: 8 }}>
-              <DeckLink deckUrl={deckUrl} qrDataUrl={qrDataUrl} width={frontW} qrSize={dual ? 176 : QR} />
+              <DeckLink deckUrl={deckUrl} qrDataUrl={qrDataUrl} width={frontW} qrSize={dual ? (power > 0 ? 168 : 248) : QR} />
             </div>
           </section>
 
@@ -592,8 +580,8 @@ export function PassportSpread({
             >
               {deckName}
             </h2>
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-              <div style={{ flex: "1 1 auto", minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: rightWidth - makerCol - 12, flex: "0 0 auto", minWidth: 0 }}>
                 <PassportField
                   label="Passport name"
                   value={
@@ -610,11 +598,17 @@ export function PassportSpread({
                 <PassportField label="Place of birth" value={setName} size={40} />
                 <PassportField label="Endorsements" value={endorsements} size={40} />
               </div>
-              {dual ? null : (
-                <div style={{ flex: "0 0 auto", marginTop: 16 }}>
-                  <MakerStamp />
-                </div>
-              )}
+              <div
+                style={{
+                  width: makerCol,
+                  flex: "0 0 auto",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <MakerStamp />
+              </div>
             </div>
             <PassportField label="Notes" value={notes} size={notesSize} gap={14} />
 

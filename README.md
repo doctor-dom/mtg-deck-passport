@@ -6,7 +6,7 @@ The sheet is faint blue. The commander side shows the commander (or the first sp
 
 Commander decks stamp a bracket from 1 (Exhibition) through 5 (cEDH) as that many commander-symbol stamps, with the level written underneath. If the deck site includes a bracket, it is selected for you and you can change it. Other formats stamp the deck type instead, such as Standard, Modern, or Historic. The playstyle stamp takes up to two of aggro, control, combo, midrange, or ramp. Endorsements are the sub-themes you type, such as vehicles or +1/+1 counters.
 
-Commander, Brawl, and Oathbreaker decks are detected automatically. You pick the commander printing. If that printing is double-faced, the back face sits in the margin beside the commander and the visas move above and below the pair.
+Commander, Brawl, and Oathbreaker decks are detected automatically. You pick the commander printing. If that printing is double-faced, the back face sits in the margin beside the commander. The deck visas move above and below that pair. The made-by visa stays to the right of the passport text.
 
 The QR code under the commander opens the same deck link you pasted, rewritten to a stable URL for that site.
 
