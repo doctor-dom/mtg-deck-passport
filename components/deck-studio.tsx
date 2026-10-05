@@ -66,6 +66,7 @@ export function DeckStudio() {
   const [faceIndex, setFaceIndex] = useState(0);
   const [bracket, setBracket] = useState<number | null>(null);
   const [playstyles, setPlaystyles] = useState<Playstyle[]>([]);
+  const [endorsements, setEndorsements] = useState("");
   const [showBack, setShowBack] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -200,6 +201,7 @@ export function DeckStudio() {
       setFaceIndex(0);
       setBracket(data.deck.bracket ?? null);
       setPlaystyles([]);
+      setEndorsements("");
       setShowBack(false);
       setCommanders(
         data.deck.commanders.map((card) => ({
@@ -300,6 +302,9 @@ export function DeckStudio() {
       bracket={bracket}
       formatLabel={deck?.formatLabel ?? "Deck"}
       playstyles={playstyles}
+      setCode={heroPrinting?.set}
+      setName={heroPrinting?.setName}
+      endorsements={endorsements}
     />
   );
 
@@ -422,8 +427,21 @@ export function DeckStudio() {
             </div>
 
             <div className="grid gap-1.5">
+              <Label htmlFor="endorsements">Endorsements</Label>
+              <Input
+                id="endorsements"
+                value={endorsements}
+                maxLength={80}
+                placeholder="Vehicles, discard, +1/+1 counters"
+                onChange={(event) => setEndorsements(event.target.value)}
+                {...{ onValueChange: setEndorsements }}
+              />
+              <p className="text-sm text-muted-foreground">Sub-themes, separated by commas.</p>
+            </div>
+
+            <div className="grid gap-1.5">
                 <div className="flex items-center justify-between gap-3">
-                <Label htmlFor="description">Short description</Label>
+                <Label htmlFor="description">Notes</Label>
                 <span className="text-xs text-muted-foreground">{description.length}/220</span>
               </div>
               <Textarea
@@ -438,7 +456,7 @@ export function DeckStudio() {
 
             <fieldset className="grid gap-2">
               <legend className="text-sm font-medium">Playstyle stamp</legend>
-              <p className="text-sm text-muted-foreground">Choose up to two. They stamp the notes page.</p>
+              <p className="text-sm text-muted-foreground">Choose up to two. They stamp the commander side.</p>
               <div className="flex flex-wrap gap-2">
                 {PLAYSTYLES.map((style) => {
                   const checked = playstyles.includes(style);

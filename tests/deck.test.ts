@@ -11,6 +11,7 @@ import { parseMoxfieldDeck } from "../lib/decks/parse-moxfield";
 import { manaCurve } from "../lib/mana-curve";
 import { defaultPrintingId } from "../lib/printings";
 import { assertScryfallImageUrl } from "../lib/images";
+import { readSetSymbol, setSymbolCode } from "../lib/set-symbol";
 import { spotlightKindFrom } from "../lib/spotlight";
 import type { DeckCard, ResolvedPrinting } from "../lib/types";
 import { canonicalDeckUrl, parseDeckUrl } from "../lib/urls";
@@ -290,6 +291,16 @@ describe("passport stamps", () => {
     assert.equal(faces.imageUrl, "https://cards.scryfall.io/front.jpg");
     assert.equal(faces.backImageUrl, "https://cards.scryfall.io/back.jpg");
     assert.equal(faces.backName, "The Prismatic Bridge");
+  });
+
+  it("reads a Keyrune set symbol and the commander mark", () => {
+    assert.equal(setSymbolCode("NEO"), "neo");
+    assert.equal(setSymbolCode("../neo"), "neo");
+    assert.equal(setSymbolCode(""), undefined);
+    assert.match(readSetSymbol("neo", "#1e4b7a") ?? "", /fill="#1e4b7a"/);
+    assert.match(readSetSymbol("c14", "#9c2b2b") ?? "", /fill="#9c2b2b"/);
+    assert.equal(readSetSymbol("notaset", "#1e4b7a"), undefined);
+    assert.equal(readSetSymbol("neo", "blue"), undefined);
   });
 });
 
