@@ -26,10 +26,14 @@ const PIP_SRC: Record<ManaColor | "C", string> = {
 
 const HERO_W = 522;
 const HERO_H = 730;
-const SPOT_W = 372;
-const SPOT_H = 520;
+const SPOT_W = 340;
+const SPOT_H = 475;
 const QR = 280;
 const COMMANDER_SYMBOL = "c14";
+const LEFT_COL = 740;
+const COL_GAP = 8;
+const TEXT_INSET = 72;
+const RIGHT_WIDTH = POSTER_WIDTH - 16 * 2 - 18 * 2 - LEFT_COL - COL_GAP - TEXT_INSET;
 
 export type PassportHighlight = {
   name: string;
@@ -90,20 +94,33 @@ function SetMark({ code, ink, size }: { code?: string; ink: string; size: number
   );
 }
 
+function textUnits(value: string): number {
+  let units = 0;
+  for (const char of value) {
+    const code = char.codePointAt(0) ?? 0;
+    if (code > 0x2fff || (code >= 0x2600 && code <= 0x27bf)) units += 1.8;
+    else if (char === " " || char === "." || char === "," || char === "'" || char === '"') units += 0.38;
+    else if ("ilI!|".includes(char)) units += 0.34;
+    else if ("mwMW".includes(char)) units += 0.86;
+    else units += 0.62;
+  }
+  return Math.max(units, 1);
+}
+
 function DeckTypeStamp({ label, setCode }: { label: string; setCode?: string }) {
-  const size = label.length > 14 ? 28 : label.length > 10 ? 36 : 44;
+  const size = label.length > 14 ? 32 : label.length > 10 ? 40 : 48;
   return (
     <div
       style={{
-        width: 448,
-        height: 214,
+        width: 640,
+        height: 292,
         borderRadius: "50%",
-        border: "7px solid " + STAMP_INK,
+        border: "8px solid " + STAMP_INK,
         color: STAMP_INK,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        transform: "rotate(-8deg)",
+        transform: "rotate(-7deg)",
         background: STAMP_FILL,
         boxShadow: "inset 0 0 0 3px " + STAMP_INK,
         fontFamily: TYPE,
@@ -111,8 +128,8 @@ function DeckTypeStamp({ label, setCode }: { label: string; setCode?: string }) 
     >
       <div
         style={{
-          width: 390,
-          height: 164,
+          width: 560,
+          height: 220,
           borderRadius: "50%",
           border: "2px solid " + STAMP_INK,
           display: "flex",
@@ -120,15 +137,17 @@ function DeckTypeStamp({ label, setCode }: { label: string; setCode?: string }) 
           alignItems: "center",
           justifyContent: "center",
           textAlign: "center",
-          padding: "4px 28px",
+          padding: "6px 28px",
           boxSizing: "border-box",
-          gap: 4,
+          gap: 6,
         }}
       >
-        <div style={{ fontSize: 16, letterSpacing: "0.28em", lineHeight: 1, flex: "0 0 auto" }}>VISA</div>
-        <SetMark code={setCode} ink={STAMP_INK} size={40} />
-        <div style={{ fontSize: size, lineHeight: 1, maxWidth: 330, flex: "0 0 auto" }}>{label}</div>
-        <div style={{ fontSize: 16, letterSpacing: "0.18em", lineHeight: 1, flex: "0 0 auto" }}>ADMITTED</div>
+        <div style={{ fontSize: 18, letterSpacing: "0.32em", lineHeight: 1, flex: "0 0 auto" }}>VISA</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, flex: "0 0 auto" }}>
+          <SetMark code={setCode} ink={STAMP_INK} size={128} />
+          <div style={{ fontSize: size, lineHeight: 0.95, maxWidth: 300, textAlign: "left", flex: "0 0 auto" }}>{label}</div>
+        </div>
+        <div style={{ fontSize: 18, letterSpacing: "0.2em", lineHeight: 1, flex: "0 0 auto" }}>ADMITTED</div>
       </div>
     </div>
   );
@@ -143,9 +162,9 @@ function PowerStamps({ count, caption }: { count: number; caption?: string }) {
           <div
             key={index}
             style={{
-              width: 78,
-              height: 78,
-              marginLeft: index === 0 ? 0 : -26,
+              width: 112,
+              height: 112,
+              marginLeft: index === 0 ? 0 : -34,
               borderRadius: "50%",
               border: "3px solid #9c2b2b",
               color: "#9c2b2b",
@@ -158,12 +177,12 @@ function PowerStamps({ count, caption }: { count: number; caption?: string }) {
               fontFamily: TYPE,
             }}
           >
-            <SetMark code={COMMANDER_SYMBOL} ink="#9c2b2b" size={36} />
+            <SetMark code={COMMANDER_SYMBOL} ink="#9c2b2b" size={52} />
           </div>
         ))}
       </div>
       {caption ? (
-        <div style={{ fontSize: 20, letterSpacing: "0.04em", color: "#9c2b2b" }}>{caption}</div>
+        <div style={{ fontSize: 24, letterSpacing: "0.03em", color: "#9c2b2b" }}>{caption}</div>
       ) : null}
     </div>
   );
@@ -174,9 +193,9 @@ function PlaystyleStamp({ styles }: { styles: Playstyle[] }) {
   return (
     <div
       style={{
-        width: 300,
-        padding: "12px 14px 14px",
-        border: "6px solid " + STAMP_INK,
+        width: 440,
+        padding: "18px 20px 20px",
+        border: "8px solid " + STAMP_INK,
         color: STAMP_INK,
         textAlign: "center",
         transform: "rotate(6deg)",
@@ -185,17 +204,17 @@ function PlaystyleStamp({ styles }: { styles: Playstyle[] }) {
         fontFamily: TYPE,
       }}
     >
-      <div style={{ fontSize: 16, letterSpacing: "0.22em" }}>PLAYSTYLE</div>
-      <div style={{ fontSize: label.length > 16 ? 26 : 34, lineHeight: 1.05, marginTop: 6 }}>{label}</div>
+      <div style={{ fontSize: 18, letterSpacing: "0.22em" }}>PLAYSTYLE</div>
+      <div style={{ fontSize: label.length > 16 ? 32 : 42, lineHeight: 1.05, marginTop: 8 }}>{label}</div>
     </div>
   );
 }
 
-function PassportField({ label, value, size = 32 }: { label: string; value?: string; size?: number }) {
+function PassportField({ label, value, size = 32, gap = 0 }: { label: string; value?: string; size?: number; gap?: number }) {
   return (
-    <div style={{ marginTop: 12, flexShrink: 0 }}>
-      <p style={{ margin: 0, fontSize: 18, letterSpacing: "0.14em" }}>{label.toUpperCase()}</p>
-      <p style={{ margin: "3px 0 0", fontSize: size, lineHeight: 1.2, whiteSpace: "pre-wrap" }}>{value?.trim() || "—"}</p>
+    <div style={{ marginTop: 10, marginBottom: gap, flexShrink: 0 }}>
+      <p style={{ margin: 0, fontSize: 21, letterSpacing: "0.14em" }}>{label.toUpperCase()}</p>
+      <p style={{ margin: "3px 0 0", fontSize: size, lineHeight: 1.18, whiteSpace: "pre-wrap" }}>{value?.trim() || "—"}</p>
     </div>
   );
 }
@@ -309,7 +328,9 @@ export function PassportSpread({
   const pinned = shown.length
     ? shown
     : [undefined, undefined, undefined].map(() => ({ name: undefined, imageUrl: undefined }));
-  const titleSize = deckName.length > 34 ? 60 : deckName.length > 22 ? 74 : 88;
+  const titleSize = Math.max(42, Math.min(92, Math.floor((RIGHT_WIDTH - 8) / textUnits(deckName))));
+  const notes = description?.trim() || "Type a short description of how this deck plays.";
+  const notesSize = Math.max(34, Math.min(50, Math.round((RIGHT_WIDTH * 3.4) / textUnits(notes))));
   const levelLine =
     power > 0 ? `Level ${power} — ${bracketName(bracket) ?? "Unrated"}` : undefined;
 
@@ -338,8 +359,8 @@ export function PassportSpread({
           overflow: "hidden",
         }}
       >
-        <div style={{ flex: 1, minHeight: 0, display: "flex", gap: 18 }}>
-          <section style={{ width: 900, flex: "0 0 auto", display: "flex", flexDirection: "column", minHeight: 0 }}>
+        <div style={{ flex: 1, minHeight: 0, display: "flex", gap: COL_GAP }}>
+          <section style={{ width: LEFT_COL, flex: "0 0 auto", display: "flex", flexDirection: "column", minHeight: 0, position: "relative", zIndex: 1 }}>
             <div style={{ position: "relative", height: HERO_H }}>
               <div style={{ width: HERO_W, position: "relative", zIndex: 1 }}>
                 {heroImage ? (
@@ -373,14 +394,14 @@ export function PassportSpread({
                   </div>
                 )}
               </div>
-              <div style={{ position: "absolute", left: HERO_W - 96, top: 12, zIndex: 2 }}>
+              <div style={{ position: "absolute", left: HERO_W - 210, top: 70, zIndex: 2 }}>
                 <DeckTypeStamp label={formatLabel.toUpperCase()} setCode={setCode} />
               </div>
-              <div style={{ position: "absolute", left: HERO_W - 20, top: 248, zIndex: 3 }}>
+              <div style={{ position: "absolute", left: HERO_W - 110, top: 360, zIndex: 3 }}>
                 <PlaystyleStamp styles={playstyles} />
               </div>
               {power > 0 ? (
-                <div style={{ position: "absolute", left: 630, top: 468, zIndex: 4, maxWidth: 250 }}>
+                <div style={{ position: "absolute", left: HERO_W + 8, top: 524, zIndex: 4 }}>
                   <PowerStamps count={power} caption={levelLine} />
                 </div>
               ) : null}
@@ -423,7 +444,7 @@ export function PassportSpread({
             </div>
           </section>
 
-          <section style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+          <section style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", position: "relative", zIndex: 2, paddingLeft: TEXT_INSET }}>
             {pips.length > 0 ? (
               <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
                 {pips.map((color) => (
@@ -438,24 +459,21 @@ export function PassportSpread({
                 lineHeight: 0.98,
                 fontWeight: 400,
                 flexShrink: 0,
+                whiteSpace: "nowrap",
               }}
             >
               {deckName}
             </h2>
-            <PassportField label="Passport name" value={commanderName || heroName || formatLabel} />
-            {showingBack ? <p style={{ margin: "2px 0 0", fontSize: 18 }}>Back face</p> : null}
-            {partnerLine ? <p style={{ margin: "2px 0 0", fontSize: 18 }}>{partnerLine}</p> : null}
-            {credit ? <p style={{ margin: "2px 0 0", fontSize: 18 }}>Issued to {credit}</p> : null}
-            <PassportField label="Place of birth" value={setName} />
-            <PassportField label="Endorsements" value={endorsements} />
-            <PassportField
-              label="Notes"
-              value={description || "Type a short description of how this deck plays."}
-              size={28}
-            />
+            <PassportField label="Passport name" value={commanderName || heroName || formatLabel} size={40} />
+            {showingBack ? <p style={{ margin: "2px 0 0", fontSize: 22 }}>Back face</p> : null}
+            {partnerLine ? <p style={{ margin: "2px 0 0", fontSize: 22 }}>{partnerLine}</p> : null}
+            {credit ? <p style={{ margin: "2px 0 0", fontSize: 22 }}>Issued to {credit}</p> : null}
+            <PassportField label="Place of birth" value={setName} size={40} />
+            <PassportField label="Endorsements" value={endorsements} size={40} />
+            <PassportField label="Notes" value={notes} size={notesSize} gap={14} />
 
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", minHeight: 0, paddingTop: 18 }}>
-              <p style={{ margin: "0 0 8px", fontSize: 20, letterSpacing: "0.16em" }}>SPOTLIGHT CARDS</p>
+            <div style={{ flex: "0 0 auto", display: "flex", flexDirection: "column", marginTop: 16 }}>
+              <p style={{ margin: "0 0 8px", fontSize: 22, letterSpacing: "0.16em" }}>SPOTLIGHT CARDS</p>
               <div style={{ display: "flex", alignItems: "flex-start" }}>
                 {pinned.map((card, index) => (
                   <PinnedCard
