@@ -12,8 +12,17 @@ const TYPE = "var(--font-typewriter), 'Courier New', Courier, monospace";
 const INK = "#1a3148";
 const PAPER = "#e7f2fc";
 const FRAME = "#c9dff3";
-const STAMP_INK = "#1e4b7a";
-const STAMP_FILL = "rgba(231, 242, 252, 0.78)";
+const STAMP_INK = "rgba(30, 75, 122, 0.78)";
+const STAMP_EDGE = "rgba(30, 75, 122, 0.34)";
+const STAMP_FILL = "rgba(231, 242, 252, 0.14)";
+const STAMP_HEX = "#1e4b7a";
+const PLAY_INK = "rgba(16, 99, 48, 0.82)";
+const PLAY_EDGE = "rgba(21, 122, 58, 0.38)";
+const PLAY_FILL = "rgba(214, 242, 222, 0.16)";
+const POWER_INK = "rgba(156, 43, 43, 0.78)";
+const POWER_EDGE = "rgba(156, 43, 43, 0.36)";
+const POWER_FILL = "rgba(252, 236, 236, 0.14)";
+const POWER_HEX = "#9c2b2b";
 
 const PIP_SRC: Record<ManaColor | "C", string> = {
   W: "/mana/W.svg",
@@ -28,12 +37,11 @@ const HERO_W = 522;
 const HERO_H = 730;
 const SPOT_W = 340;
 const SPOT_H = 475;
-const QR = 280;
+const QR = 328;
 const COMMANDER_SYMBOL = "c14";
 const LEFT_COL = 740;
 const COL_GAP = 8;
 const TEXT_INSET = 72;
-const RIGHT_WIDTH = POSTER_WIDTH - 16 * 2 - 18 * 2 - LEFT_COL - COL_GAP - TEXT_INSET;
 
 export type PassportHighlight = {
   name: string;
@@ -49,6 +57,8 @@ export type PassportSpreadProps = {
   showColorless?: boolean;
   heroImage?: string;
   heroName?: string;
+  backImage?: string;
+  backName?: string;
   showingBack?: boolean;
   highlights: PassportHighlight[];
   deckUrl?: string;
@@ -89,7 +99,7 @@ function SetMark({ code, ink, size }: { code?: string; ink: string; size: number
     <img
       alt=""
       src={symbolSrc(code, ink)}
-      style={{ width: size, height: size, objectFit: "contain", flex: "0 0 auto" }}
+      style={{ width: size, height: size, objectFit: "contain", flex: "0 0 auto", opacity: 0.8 }}
     />
   );
 }
@@ -115,14 +125,14 @@ function DeckTypeStamp({ label, setCode }: { label: string; setCode?: string }) 
         width: 640,
         height: 292,
         borderRadius: "50%",
-        border: "8px solid " + STAMP_INK,
+        border: "8px solid " + STAMP_EDGE,
         color: STAMP_INK,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         transform: "rotate(-7deg)",
         background: STAMP_FILL,
-        boxShadow: "inset 0 0 0 3px " + STAMP_INK,
+        boxShadow: "inset 0 0 0 3px " + STAMP_EDGE,
         fontFamily: TYPE,
       }}
     >
@@ -131,7 +141,7 @@ function DeckTypeStamp({ label, setCode }: { label: string; setCode?: string }) 
           width: 560,
           height: 220,
           borderRadius: "50%",
-          border: "2px solid " + STAMP_INK,
+          border: "2px solid " + STAMP_EDGE,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -144,7 +154,7 @@ function DeckTypeStamp({ label, setCode }: { label: string; setCode?: string }) 
       >
         <div style={{ fontSize: 18, letterSpacing: "0.32em", lineHeight: 1, flex: "0 0 auto" }}>VISA</div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, flex: "0 0 auto" }}>
-          <SetMark code={setCode} ink={STAMP_INK} size={128} />
+          <SetMark code={setCode} ink={STAMP_HEX} size={128} />
           <div style={{ fontSize: size, lineHeight: 0.95, maxWidth: 300, textAlign: "left", flex: "0 0 auto" }}>{label}</div>
         </div>
         <div style={{ fontSize: 18, letterSpacing: "0.2em", lineHeight: 1, flex: "0 0 auto" }}>ADMITTED</div>
@@ -166,23 +176,23 @@ function PowerStamps({ count, caption }: { count: number; caption?: string }) {
               height: 112,
               marginLeft: index === 0 ? 0 : -34,
               borderRadius: "50%",
-              border: "3px solid #9c2b2b",
-              color: "#9c2b2b",
+              border: "3px solid " + POWER_EDGE,
+              color: POWER_INK,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               transform: `rotate(${rotations[index % rotations.length]}deg)`,
-              background: STAMP_FILL,
-              boxShadow: "inset 0 0 0 1px #9c2b2b",
+              background: POWER_FILL,
+              boxShadow: "inset 0 0 0 1px " + POWER_EDGE,
               fontFamily: TYPE,
             }}
           >
-            <SetMark code={COMMANDER_SYMBOL} ink="#9c2b2b" size={52} />
+            <SetMark code={COMMANDER_SYMBOL} ink={POWER_HEX} size={52} />
           </div>
         ))}
       </div>
       {caption ? (
-        <div style={{ fontSize: 24, letterSpacing: "0.03em", color: "#9c2b2b" }}>{caption}</div>
+        <div style={{ fontSize: 24, letterSpacing: "0.03em", color: POWER_INK }}>{caption}</div>
       ) : null}
     </div>
   );
@@ -195,17 +205,105 @@ function PlaystyleStamp({ styles }: { styles: Playstyle[] }) {
       style={{
         width: 440,
         padding: "18px 20px 20px",
-        border: "8px solid " + STAMP_INK,
-        color: STAMP_INK,
+        border: "8px solid " + PLAY_EDGE,
+        color: PLAY_INK,
         textAlign: "center",
         transform: "rotate(6deg)",
-        background: STAMP_FILL,
-        boxShadow: "inset 0 0 0 2px " + STAMP_INK,
+        background: PLAY_FILL,
+        boxShadow: "inset 0 0 0 2px " + PLAY_EDGE,
         fontFamily: TYPE,
       }}
     >
       <div style={{ fontSize: 18, letterSpacing: "0.22em" }}>PLAYSTYLE</div>
       <div style={{ fontSize: label.length > 16 ? 32 : 42, lineHeight: 1.05, marginTop: 8 }}>{label}</div>
+    </div>
+  );
+}
+
+function MakerStamp() {
+  return (
+    <div
+      style={{
+        width: 392,
+        height: 186,
+        borderRadius: "50%",
+        border: "7px solid " + STAMP_EDGE,
+        color: STAMP_INK,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        transform: "rotate(4deg)",
+        background: STAMP_FILL,
+        boxShadow: "inset 0 0 0 2px " + STAMP_EDGE,
+        fontFamily: TYPE,
+        flex: "0 0 auto",
+      }}
+    >
+      <div
+        style={{
+          width: 336,
+          height: 136,
+          borderRadius: "50%",
+          border: "2px solid " + STAMP_EDGE,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          textAlign: "center",
+          padding: "4px 18px",
+          boxSizing: "border-box",
+          gap: 4,
+        }}
+      >
+        <div style={{ fontSize: 15, letterSpacing: "0.22em", lineHeight: 1, flex: "0 0 auto" }}>made by:</div>
+        <div style={{ fontSize: 23, lineHeight: 1.05, flex: "0 0 auto" }}>MTG Deck Passport</div>
+      </div>
+    </div>
+  );
+}
+
+function DeckLink({
+  deckUrl,
+  qrDataUrl,
+  width,
+  qrSize,
+}: {
+  deckUrl?: string;
+  qrDataUrl?: string;
+  width: number;
+  qrSize: number;
+}) {
+  return (
+    <div style={{ width, display: "flex", flexDirection: "column", alignItems: "center" }}>
+      {qrDataUrl ? (
+        <img
+          alt="QR code linking to the deck"
+          src={qrDataUrl}
+          style={{ width: qrSize, height: qrSize, background: "#fff", borderRadius: 8 }}
+        />
+      ) : (
+        <div
+          style={{
+            width: qrSize,
+            height: qrSize,
+            border: "1px dashed rgba(26,49,72,0.28)",
+            borderRadius: 8,
+          }}
+        />
+      )}
+      <p
+        style={{
+          margin: "10px 0 0",
+          width: "100%",
+          fontSize: qrSize > 260 ? 28 : 22,
+          lineHeight: 1.25,
+          textAlign: "center",
+          overflowWrap: "break-word",
+        }}
+      >
+        {deckUrl ? displayUrl(deckUrl).replaceAll("/", "/\u200b") : "Deck link appears here"}
+      </p>
+      <p style={{ margin: "6px 0 0", fontSize: 16, letterSpacing: "0.08em" }}>No. {passportNo(deckUrl)}</p>
     </div>
   );
 }
@@ -307,6 +405,8 @@ export function PassportSpread({
   showColorless = false,
   heroImage,
   heroName,
+  backImage,
+  backName,
   showingBack = false,
   highlights,
   deckUrl,
@@ -328,9 +428,17 @@ export function PassportSpread({
   const pinned = shown.length
     ? shown
     : [undefined, undefined, undefined].map(() => ({ name: undefined, imageUrl: undefined }));
-  const titleSize = Math.max(42, Math.min(92, Math.floor((RIGHT_WIDTH - 8) / textUnits(deckName))));
+  const dual = Boolean(backImage);
+  const frontW = dual ? 418 : HERO_W;
+  const frontH = dual ? 584 : HERO_H;
+  const backW = 280;
+  const backH = 392;
+  const leftCol = dual ? frontW + 16 + backW + 12 : LEFT_COL;
+  const textInset = dual ? 18 : TEXT_INSET;
+  const rightWidth = POSTER_WIDTH - 16 * 2 - 18 * 2 - leftCol - COL_GAP - textInset;
+  const titleSize = Math.max(42, Math.min(92, Math.floor((rightWidth - 8) / textUnits(deckName))));
   const notes = description?.trim() || "Type a short description of how this deck plays.";
-  const notesSize = Math.max(34, Math.min(50, Math.round((RIGHT_WIDTH * 3.4) / textUnits(notes))));
+  const notesSize = Math.max(34, Math.min(50, Math.round((rightWidth * 3.4) / textUnits(notes))));
   const levelLine =
     power > 0 ? `Level ${power} — ${bracketName(bracket) ?? "Unrated"}` : undefined;
 
@@ -360,16 +468,26 @@ export function PassportSpread({
         }}
       >
         <div style={{ flex: 1, minHeight: 0, display: "flex", gap: COL_GAP }}>
-          <section style={{ width: LEFT_COL, flex: "0 0 auto", display: "flex", flexDirection: "column", minHeight: 0, position: "relative", zIndex: 1 }}>
-            <div style={{ position: "relative", height: HERO_H }}>
-              <div style={{ width: HERO_W, position: "relative", zIndex: 1 }}>
+          <section style={{ width: leftCol, flex: "0 0 auto", display: "flex", flexDirection: "column", minHeight: 0, position: "relative", zIndex: 1 }}>
+            {dual ? (
+              <div style={{ position: "relative", height: 196, flex: "0 0 auto" }}>
+                <div style={{ position: "absolute", left: 0, top: 8, transform: "scale(0.58)", transformOrigin: "top left" }}>
+                  <DeckTypeStamp label={formatLabel.toUpperCase()} setCode={setCode} />
+                </div>
+                <div style={{ position: "absolute", left: 360, top: 36, transform: "scale(0.72)", transformOrigin: "top left" }}>
+                  <PlaystyleStamp styles={playstyles} />
+                </div>
+              </div>
+            ) : null}
+            <div style={{ position: "relative", height: frontH, flex: "0 0 auto" }}>
+              <div style={{ width: frontW, position: "relative", zIndex: 1 }}>
                 {heroImage ? (
                   <img
                     alt={heroName ?? deckName}
                     src={mediaSrc(heroImage)}
                     style={{
-                      width: HERO_W,
-                      height: HERO_H,
+                      width: frontW,
+                      height: frontH,
                       objectFit: "cover",
                       borderRadius: 10,
                       background: "#d5e4f2",
@@ -379,8 +497,8 @@ export function PassportSpread({
                 ) : (
                   <div
                     style={{
-                      width: HERO_W,
-                      height: HERO_H,
+                      width: frontW,
+                      height: frontH,
                       borderRadius: 10,
                       border: "1px dashed rgba(26,49,72,0.35)",
                       display: "flex",
@@ -394,57 +512,67 @@ export function PassportSpread({
                   </div>
                 )}
               </div>
-              <div style={{ position: "absolute", left: HERO_W - 210, top: 70, zIndex: 2 }}>
-                <DeckTypeStamp label={formatLabel.toUpperCase()} setCode={setCode} />
-              </div>
-              <div style={{ position: "absolute", left: HERO_W - 110, top: 360, zIndex: 3 }}>
-                <PlaystyleStamp styles={playstyles} />
-              </div>
-              {power > 0 ? (
-                <div style={{ position: "absolute", left: HERO_W + 8, top: 524, zIndex: 4 }}>
-                  <PowerStamps count={power} caption={levelLine} />
-                </div>
-              ) : null}
-            </div>
-
-            <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 18, minHeight: 0, paddingTop: 12 }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: 48, lineHeight: 1 }}>DECK PASSPORT</p>
-                <p style={{ margin: "8px 0 0", fontSize: 20, letterSpacing: "0.08em" }}>No. {passportNo(deckUrl)}</p>
-                <p
-                  style={{
-                    margin: "6px 0 0",
-                    fontSize: 18,
-                    lineHeight: 1.3,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {deckUrl ? displayUrl(deckUrl) : "Deck link appears here"}
-                </p>
-              </div>
-              {qrDataUrl ? (
+              {dual && backImage ? (
                 <img
-                  alt="QR code linking to the deck"
-                  src={qrDataUrl}
-                  style={{ width: QR, height: QR, background: "#fff", borderRadius: 8, flex: "0 0 auto" }}
+                  alt={backName || "Back face"}
+                  src={mediaSrc(backImage)}
+                  style={{
+                    position: "absolute",
+                    left: frontW + 16,
+                    top: (frontH - backH) / 2,
+                    width: backW,
+                    height: backH,
+                    objectFit: "cover",
+                    borderRadius: 10,
+                    background: "#d5e4f2",
+                    boxShadow: "0 10px 22px rgba(26, 49, 72, 0.2)",
+                    zIndex: 2,
+                  }}
                 />
-              ) : (
+              ) : null}
+              {dual ? null : (
+                <>
+                  <div style={{ position: "absolute", left: HERO_W - 210, top: 70, zIndex: 2 }}>
+                    <DeckTypeStamp label={formatLabel.toUpperCase()} setCode={setCode} />
+                  </div>
+                  <div style={{ position: "absolute", left: HERO_W - 110, top: 360, zIndex: 3 }}>
+                    <PlaystyleStamp styles={playstyles} />
+                  </div>
+                  {power > 0 ? (
+                    <div style={{ position: "absolute", left: HERO_W + 8, top: 524, zIndex: 4 }}>
+                      <PowerStamps count={power} caption={levelLine} />
+                    </div>
+                  ) : null}
+                </>
+              )}
+            </div>
+            {dual ? (
+              <div style={{ position: "relative", height: power > 0 ? 136 : 158, flex: "0 0 auto", marginTop: 6 }}>
+                {power > 0 ? (
+                  <div style={{ position: "absolute", left: 0, top: 0, transform: "scale(0.66)", transformOrigin: "top left" }}>
+                    <PowerStamps count={power} caption={levelLine} />
+                  </div>
+                ) : null}
                 <div
                   style={{
-                    width: QR,
-                    height: QR,
-                    border: "1px dashed rgba(26,49,72,0.28)",
-                    borderRadius: 8,
-                    flex: "0 0 auto",
+                    position: "absolute",
+                    left: power > 0 ? 292 : 12,
+                    top: 0,
+                    transform: `scale(${power > 0 ? 0.66 : 0.84})`,
+                    transformOrigin: "top left",
                   }}
-                />
-              )}
+                >
+                  <MakerStamp />
+                </div>
+              </div>
+            ) : null}
+
+            <div style={{ flex: 1, display: "flex", alignItems: "center", minHeight: 0, paddingTop: 8 }}>
+              <DeckLink deckUrl={deckUrl} qrDataUrl={qrDataUrl} width={frontW} qrSize={dual ? 176 : QR} />
             </div>
           </section>
 
-          <section style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", position: "relative", zIndex: 2, paddingLeft: TEXT_INSET }}>
+          <section style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", position: "relative", zIndex: 2, paddingLeft: textInset }}>
             {pips.length > 0 ? (
               <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
                 {pips.map((color) => (
@@ -464,12 +592,30 @@ export function PassportSpread({
             >
               {deckName}
             </h2>
-            <PassportField label="Passport name" value={commanderName || heroName || formatLabel} size={40} />
-            {showingBack ? <p style={{ margin: "2px 0 0", fontSize: 22 }}>Back face</p> : null}
-            {partnerLine ? <p style={{ margin: "2px 0 0", fontSize: 22 }}>{partnerLine}</p> : null}
-            {credit ? <p style={{ margin: "2px 0 0", fontSize: 22 }}>Issued to {credit}</p> : null}
-            <PassportField label="Place of birth" value={setName} size={40} />
-            <PassportField label="Endorsements" value={endorsements} size={40} />
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+              <div style={{ flex: "1 1 auto", minWidth: 0 }}>
+                <PassportField
+                  label="Passport name"
+                  value={
+                    (showingBack ? (commanderName || heroName || "").split(" // ")[0]?.trim() : undefined) ||
+                    commanderName ||
+                    heroName ||
+                    formatLabel
+                  }
+                  size={40}
+                />
+                {showingBack && backName ? <p style={{ margin: "2px 0 0", fontSize: 22 }}>{backName}</p> : null}
+                {partnerLine ? <p style={{ margin: "2px 0 0", fontSize: 22 }}>{partnerLine}</p> : null}
+                {credit ? <p style={{ margin: "2px 0 0", fontSize: 22 }}>Issued to {credit}</p> : null}
+                <PassportField label="Place of birth" value={setName} size={40} />
+                <PassportField label="Endorsements" value={endorsements} size={40} />
+              </div>
+              {dual ? null : (
+                <div style={{ flex: "0 0 auto", marginTop: 16 }}>
+                  <MakerStamp />
+                </div>
+              )}
+            </div>
             <PassportField label="Notes" value={notes} size={notesSize} gap={14} />
 
             <div style={{ flex: "0 0 auto", display: "flex", flexDirection: "column", marginTop: 16 }}>

@@ -299,6 +299,7 @@ describe("passport stamps", () => {
     assert.equal(setSymbolCode(""), undefined);
     assert.match(readSetSymbol("neo", "#1e4b7a") ?? "", /fill="#1e4b7a"/);
     assert.match(readSetSymbol("c14", "#9c2b2b") ?? "", /fill="#9c2b2b"/);
+    assert.match(readSetSymbol("sld", "#1e4b7a") ?? "", /fill="#1e4b7a"/);
     assert.equal(readSetSymbol("notaset", "#1e4b7a"), undefined);
     assert.equal(readSetSymbol("neo", "blue"), undefined);
   });

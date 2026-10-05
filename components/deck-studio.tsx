@@ -73,6 +73,7 @@ export function DeckStudio() {
   const [scale, setScale] = useState(0.42);
   const frameRef = useRef<HTMLDivElement>(null);
   const posterRef = useRef<HTMLDivElement>(null);
+  const backAutoRef = useRef<string | null>(null);
   const slotKey = slots.map((slot) => slot.input).join("\n");
 
   async function resolveSlot(index: number, spec: string) {
@@ -177,6 +178,16 @@ export function DeckStudio() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slotKey]);
 
+  useEffect(() => {
+    if (!deck) return;
+    if (backAutoRef.current === deck.url) return;
+    const entry = commanders[faceIndex] ?? commanders[0];
+    const printing = entry?.printings.find((item) => item.id === entry.selectedId);
+    if (!printing?.backImageUrl) return;
+    backAutoRef.current = deck.url;
+    setShowBack(true);
+  }, [deck, commanders, faceIndex]);
+
   async function loadDeck(nextUrl: string) {
     const target = nextUrl.trim();
     if (!target) return;
@@ -275,7 +286,7 @@ export function DeckStudio() {
   const poster = (
     <PassportSpread
       deckName={deck?.name ?? "Your next deck"}
-      commanderName={hasCommander ? (showingBack ? facePrinting?.backName : undefined) || face?.card.name : undefined}
+      commanderName={hasCommander ? face?.card.name : undefined}
       partnerLine={deck && hasCommander ? partnerLine : undefined}
       description={
         description ||
@@ -283,16 +294,10 @@ export function DeckStudio() {
       }
       colors={deck?.colorIdentity ?? []}
       showColorless={deck != null && deck.colorIdentity.length === 0}
-      heroImage={
-        showingBack
-          ? facePrinting?.backImageUrl
-          : (heroPrinting?.imageUrl ?? heroFallback?.imageUrl)
-      }
-      heroName={
-        showingBack
-          ? facePrinting?.backName || facePrinting?.name
-          : (heroPrinting?.name ?? heroFallback?.name ?? firstSpotlight?.name)
-      }
+      heroImage={heroPrinting?.imageUrl ?? heroFallback?.imageUrl}
+      heroName={heroPrinting?.name ?? heroFallback?.name ?? firstSpotlight?.name}
+      backImage={showingBack ? facePrinting?.backImageUrl : undefined}
+      backName={showingBack ? facePrinting?.backName : undefined}
       showingBack={showingBack}
       highlights={highlights}
       deckUrl={deck?.url}
@@ -346,9 +351,10 @@ export function DeckStudio() {
             Turn a deck link into an open passport.
           </h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Paste a Moxfield, Archidekt, or ManaBox deck. The commander side carries the card, every
-            stamp, and a deck-list QR. The other side carries the title, your description, and up to
-            three spotlight cards.
+            Paste a Moxfield, Archidekt, or ManaBox deck. The commander side carries the card, the
+            visas, and a QR code centered under the commander. The other side carries the title,
+            passport fields, and up to three spotlight cards. Double-faced commanders can show the
+            other face in the margin beside the front.
           </p>
         </div>
 
@@ -562,15 +568,21 @@ export function DeckStudio() {
                   </div>
                 ))}
                 {facePrinting?.backImageUrl ? (
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={showBack}
-                      onChange={(event) => setShowBack(event.target.checked)}
-                    />
-                    Show the back face
-                    {facePrinting.backName ? ` (${facePrinting.backName})` : ""}
-                  </label>
+                  <div className="grid gap-1">
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        id="show-back"
+                        type="checkbox"
+                        checked={showBack}
+                        onChange={(event) => setShowBack(event.target.checked)}
+                      />
+                      Show the back face beside the commander
+                      {facePrinting.backName ? ` (${facePrinting.backName})` : ""}
+                    </label>
+                    <p className="text-sm text-muted-foreground">
+                      The other face sits in the margin. Visas move above and below the pair.
+                    </p>
+                  </div>
                 ) : null}
               </div>
             ) : null}
