@@ -18,7 +18,7 @@ import { PassportSpread, POSTER_HEIGHT, POSTER_WIDTH } from "./passport-spread";
 const SAMPLES = [
   {
     source: "Archidekt",
-    url: "https://archidekt.com/decks/27045649/jace-b4",
+    url: "https://archidekt.com/decks/7368845/kaalia_of_the_vast_edh_commander",
   },
   {
     source: "ManaBox",
@@ -26,7 +26,7 @@ const SAMPLES = [
   },
   {
     source: "Moxfield",
-    url: "https://moxfield.com/decks/CFeCQ5NOMESJOSSGLB8cPg",
+    url: "https://moxfield.com/decks/iqi_GNHNpUyJVPyWltrPHg",
   },
 ];
 
@@ -58,6 +58,56 @@ const EMPTY_SPOTLIGHTS: SpotlightChoice[] = [EMPTY_SPOTLIGHT, EMPTY_SPOTLIGHT, E
 
 function spotlightCardKey(card: DeckCard): string {
   return `${card.name}\0${card.set ?? ""}\0${card.collectorNumber ?? ""}`;
+}
+
+function SpotlightPicker({
+  cards,
+  onPick,
+}: {
+  cards: DeckCard[];
+  onPick: (card: DeckCard) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const normalized = query.trim().toLowerCase();
+  const visible = useMemo(() => {
+    if (!normalized) return cards;
+    return cards.filter((card) => {
+      const haystack = `${card.name} ${card.set ?? ""} ${card.collectorNumber ?? ""}`.toLowerCase();
+      return haystack.includes(normalized);
+    });
+  }, [cards, normalized]);
+
+  return (
+    <label className="grid gap-1.5 text-sm">
+      <span className="font-medium">Add from this deck</span>
+      <Input
+        value={query}
+        placeholder="Search cards…"
+        onChange={(event) => setQuery(event.target.value)}
+        aria-label="Search cards in this deck"
+        {...{ onValueChange: setQuery }}
+      />
+      <div className="max-h-52 overflow-y-auto rounded-lg border border-border p-2">
+        <div className="grid gap-1">
+          {visible.length === 0 ? (
+            <p className="px-2 py-1 text-sm text-muted-foreground">No cards match that search.</p>
+          ) : (
+            visible.map((card) => (
+              <button
+                key={spotlightCardKey(card)}
+                type="button"
+                className="rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted/60"
+                onClick={() => onPick(card)}
+              >
+                {card.name}
+                {card.set ? ` (${card.set.toUpperCase()})` : ""}
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+    </label>
+  );
 }
 
 function cardCount(deck: NormalizedDeck): number {
@@ -593,25 +643,7 @@ export function DeckStudio() {
                   Up to three cards from this deck. Pick a printing like the commander.
                 </p>
               </div>
-              <label className="grid gap-1.5 text-sm">
-                <span className="font-medium">Add from this deck</span>
-                <select
-                  className="h-10 w-full max-w-full rounded-lg border border-input bg-card px-2.5 text-sm"
-                  value=""
-                  onChange={(event) => {
-                    const card = suggestions.find((entry) => spotlightCardKey(entry) === event.target.value);
-                    if (card) assignSpotlight(card);
-                  }}
-                >
-                  <option value="">Choose a card…</option>
-                  {suggestions.map((card) => (
-                    <option key={spotlightCardKey(card)} value={spotlightCardKey(card)}>
-                      {card.name}
-                      {card.set ? ` (${card.set.toUpperCase()})` : ""}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <SpotlightPicker cards={suggestions} onPick={assignSpotlight} />
               {spotlights.map((slot, index) => (
                 <div key={index} className="grid gap-1.5">
                   <Label htmlFor={`spotlight-${index}`}>Spotlight {index + 1}</Label>

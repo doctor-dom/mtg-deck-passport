@@ -43,6 +43,9 @@ const COL_GAP = 8;
 const TEXT_INSET = 72;
 const INNER_PAD_X = 18;
 const VISA_SYMBOL = 216;
+const ART_TOP_FRAC = 0.112;
+const ART_BOTTOM_FRAC = 0.545;
+const FULL_NAME_INDENT = 168;
 
 const PAPER_TEXTURE = [
   "repeating-linear-gradient(90deg, rgba(28,58,88,0.04) 0px, rgba(28,58,88,0.04) 1px, transparent 1px, transparent 7px)",
@@ -59,35 +62,176 @@ const PAPER_NOISE = `url("data:image/svg+xml,${encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.72" numOctaves="4" stitchTiles="stitch"/><feColorMatrix type="matrix" values="0 0 0 0 0.10  0 0 0 0 0.20  0 0 0 0 0.32  0 0 0 0.08 0"/></filter><rect width="100%" height="100%" filter="url(#n)"/></svg>',
 )}")`;
 
-type StampSpot = { x: number; y: number; r: number };
+type StampSide = "left" | "right";
 
-const PIP_SPOTS: StampSpot[] = [
-  { x: -92, y: 88, r: -18 },
-  { x: 108, y: 2, r: 14 },
-  { x: 36, y: 164, r: -8 },
-  { x: -24, y: 252, r: 17 },
-  { x: 112, y: 218, r: -15 },
-];
+type ArtBox = {
+  cardLeft: number;
+  cardRight: number;
+  artTop: number;
+  artBottom: number;
+};
+
+type PlacedStamp = { left: number; top: number; size: number; rotate: number };
 
 const PIP_STACK = [5, 2, 3, 4, 6];
+const PIP_TURNS = [-16, 12, -8, 14, -12];
+const POWER_TURNS = [-14, 10, -9, 12, -7];
+const MIN_SEP = 0.84;
 
-const POWER_SPOTS: StampSpot[] = [
-  { x: -48, y: 12, r: -16 },
-  { x: 72, y: 158, r: 11 },
-  { x: -18, y: 268, r: -10 },
-  { x: 86, y: 214, r: 14 },
-  { x: 22, y: 330, r: -8 },
-];
-
-function jitteredSpot(seed: string, index: number, base: StampSpot): StampSpot {
+function jitterTurn(seed: string, index: number, base: number): number {
   const len = Math.max(seed.length, 1);
   const a = seed.charCodeAt(index % len);
   const b = seed.charCodeAt((index * 3 + 1) % len);
-  return {
-    x: base.x + ((a * 13 + index * 19) % 31) - 15,
-    y: base.y + ((b * 11 + index * 17) % 27) - 13,
-    r: base.r + ((a + b + index * 23) % 21) - 10,
+  return base + ((a + b + index * 23) % 21) - 10;
+}
+
+function artHeight(box: ArtBox): number {
+  return Math.max(0, box.artBottom - box.artTop);
+}
+
+function fitStamp(box: ArtBox, size: number, countOnSide = 1): number {
+  const height = artHeight(box);
+  const packed = height / ((Math.max(1, countOnSide) - 1) * MIN_SEP + 1);
+  return Math.min(size, Math.max(88, Math.min(height - 12, packed - 6)));
+}
+
+function stampLeft(box: ArtBox, size: number, side: StampSide, overlap: number): number {
+  const onCard = Math.min(size - 32, Math.max(48, overlap));
+  const hang = size - onCard;
+  return side === "right"
+    ? box.cardRight - onCard
+    : box.cardLeft - Math.min(hang, Math.max(0, box.cardLeft - 6));
+}
+
+function clampStampTop(box: ArtBox, size: number, top: number): number {
+  const maxTop = box.artBottom - size;
+  return Math.min(Math.max(top, box.artTop), Math.max(box.artTop, maxTop));
+}
+
+type StampJob = {
+  kind: "pip" | "power" | "set";
+  index: number;
+  size: number;
+  prefer: StampSide;
+  seedIndex: number;
+  turn: number;
+};
+
+function layoutCommanderStamps(
+  box: ArtBox,
+  seed: string,
+  pipCount: number,
+  powerCount: number,
+  hasSet: boolean,
+): { pips: PlacedStamp[]; power: PlacedStamp[]; set?: PlacedStamp } {
+  const jobs: StampJob[] = [];
+  for (let index = 0; index < pipCount; index += 1) {
+    jobs.push({
+      kind: "pip",
+      index,
+      size: VISA_SYMBOL,
+      prefer: index % 2 === 0 ? "right" : "left",
+      seedIndex: index,
+      turn: PIP_TURNS[index] ?? -8,
+    });
+  }
+  for (let index = 0; index < powerCount; index += 1) {
+    jobs.push({
+      kind: "power",
+      index,
+      size: POWER_STAMP,
+      prefer: index % 2 === 0 ? "left" : "right",
+      seedIndex: index + 3,
+      turn: POWER_TURNS[index] ?? -8,
+    });
+  }
+  if (hasSet) {
+    jobs.push({
+      kind: "set",
+      index: 0,
+      size: SET_STAMP,
+      prefer: "left",
+      seedIndex: 8,
+      turn: -18,
+    });
+  }
+
+  const leftJobs: StampJob[] = [];
+  const rightJobs: StampJob[] = [];
+  for (const job of jobs) {
+    const side =
+      job.prefer === "right" && rightJobs.length > leftJobs.length
+        ? "left"
+        : job.prefer === "left" && leftJobs.length > rightJobs.length
+          ? "right"
+          : job.prefer;
+    (side === "right" ? rightJobs : leftJobs).push(job);
+  }
+
+  type Occupied = PlacedStamp & { kind: StampJob["kind"]; index: number; side: StampSide; cx: number; cy: number; r: number };
+
+  const occupied: Occupied[] = [];
+
+  const placeGroup = (group: StampJob[], side: StampSide) => {
+    const count = group.length;
+    group.forEach((job, slot) => {
+      const size = fitStamp(box, job.size, count);
+      const travel = Math.max(0, artHeight(box) - size);
+      const yFrac = count === 1 ? 0.38 : slot / Math.max(1, count - 1);
+      const top = clampStampTop(box, size, box.artTop + yFrac * travel);
+      const overlap = 54 + slot * 38 + (job.kind === "set" ? 10 : 0);
+      const left = stampLeft(box, size, side, overlap);
+      occupied.push({
+        kind: job.kind,
+        index: job.index,
+        side,
+        left,
+        top,
+        size,
+        rotate: jitterTurn(seed, job.seedIndex, job.turn),
+        cx: left + size / 2,
+        cy: top + size / 2,
+        r: size / 2,
+      });
+    });
   };
+
+  placeGroup(leftJobs, "left");
+  placeGroup(rightJobs, "right");
+
+  for (let pass = 0; pass < 10; pass += 1) {
+    let moved = false;
+    for (let i = 0; i < occupied.length; i += 1) {
+      for (let j = i + 1; j < occupied.length; j += 1) {
+        const a = occupied[i];
+        const b = occupied[j];
+        const dx = b.cx - a.cx;
+        const dy = b.cy - a.cy;
+        const dist = Math.hypot(dx, dy) || 0.01;
+        const min = (a.r + b.r) * MIN_SEP;
+        if (dist >= min) continue;
+        const push = (min - dist) / 2 + 1;
+        const along = a.side === b.side || Math.abs(dx) < 36 ? (dy >= 0 ? 1 : -1) : dy / dist;
+        a.top = clampStampTop(box, a.size, a.top - push * along);
+        b.top = clampStampTop(box, b.size, b.top + push * along);
+        a.cy = a.top + a.r;
+        b.cy = b.top + b.r;
+        moved = true;
+      }
+    }
+    if (!moved) break;
+  }
+
+  const pips: PlacedStamp[] = [];
+  const power: PlacedStamp[] = [];
+  let set: PlacedStamp | undefined;
+  for (const item of occupied) {
+    const next = { left: item.left, top: item.top, size: item.size, rotate: item.rotate };
+    if (item.kind === "pip") pips[item.index] = next;
+    else if (item.kind === "power") power[item.index] = next;
+    else set = next;
+  }
+  return { pips, power, set };
 }
 
 const PIP_SRC: Record<ManaColor | "C", string> = {
@@ -101,6 +245,7 @@ const PIP_SRC: Record<ManaColor | "C", string> = {
 
 const CONTENT_WIDTH = POSTER_WIDTH - 16 * 2 - 18 * 2;
 const CONTENT_HEIGHT = POSTER_HEIGHT - 16 * 2 - 16 - 14;
+const LEFT_PAGE = CONTENT_WIDTH - INFO_RESERVE;
 
 export type PassportHighlight = {
   name: string;
@@ -180,18 +325,17 @@ function textUnits(value: string): number {
   return Math.max(units, 1);
 }
 
-function SetSymbolStamp({ code, seed }: { code?: string; seed: string }) {
-  if (!code) return null;
-  const spot = jitteredSpot(seed, 8, { x: 22, y: 36, r: -18 });
+function SetSymbolStamp({ code, placed }: { code?: string; placed?: PlacedStamp }) {
+  if (!code || !placed) return null;
   return (
     <div
       data-set-stamp=""
       style={{
         position: "absolute",
-        left: spot.x,
-        bottom: 10,
-        width: SET_STAMP,
-        height: SET_STAMP,
+        left: placed.left,
+        top: placed.top,
+        width: placed.size,
+        height: placed.size,
         borderRadius: "50%",
         border: "12px solid " + GOLD_EDGE,
         background: GOLD_FILL,
@@ -199,21 +343,28 @@ function SetSymbolStamp({ code, seed }: { code?: string; seed: string }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        transform: `rotate(${spot.r}deg)`,
+        transform: `rotate(${placed.rotate}deg)`,
         zIndex: 2,
       }}
     >
-      <SetMark code={code} ink={GOLD} size={156} opaque />
+      <SetMark code={code} ink={GOLD} size={Math.round(placed.size * 0.62)} opaque />
     </div>
   );
 }
 
-function VisaColorPips({ colors, seed }: { colors: readonly (ManaColor | "C")[]; seed: string }) {
+function VisaColorPips({
+  colors,
+  placements,
+}: {
+  colors: readonly (ManaColor | "C")[];
+  placements: PlacedStamp[];
+}) {
   if (colors.length === 0) return null;
   return (
     <>
       {colors.map((color, index) => {
-        const spot = jitteredSpot(seed, index, PIP_SPOTS[index] ?? PIP_SPOTS[0]);
+        const placed = placements[index];
+        if (!placed) return null;
         return (
           <img
             key={`${color}-${index}`}
@@ -221,11 +372,11 @@ function VisaColorPips({ colors, seed }: { colors: readonly (ManaColor | "C")[];
             src={PIP_SRC[color]}
             style={{
               position: "absolute",
-              left: spot.x,
-              top: spot.y,
-              width: VISA_SYMBOL,
-              height: VISA_SYMBOL,
-              transform: `rotate(${spot.r}deg)`,
+              left: placed.left,
+              top: placed.top,
+              width: placed.size,
+              height: placed.size,
+              transform: `rotate(${placed.rotate}deg)`,
               zIndex: PIP_STACK[index] ?? index + 1,
             }}
           />
@@ -235,34 +386,33 @@ function VisaColorPips({ colors, seed }: { colors: readonly (ManaColor | "C")[];
   );
 }
 
-function PowerStamps({ count, seed }: { count: number; seed: string }) {
+function PowerStamps({ placements }: { placements: PlacedStamp[] }) {
   return (
     <>
-      {Array.from({ length: count }, (_, index) => {
-        const spot = jitteredSpot(seed, index + 3, POWER_SPOTS[index] ?? POWER_SPOTS[0]);
+      {placements.map((placed, index) => {
         return (
           <div
             key={index}
             style={{
               position: "absolute",
-              left: spot.x,
-              top: spot.y,
-              width: POWER_STAMP,
-              height: POWER_STAMP,
+              left: placed.left,
+              top: placed.top,
+              width: placed.size,
+              height: placed.size,
               borderRadius: "50%",
               border: "6px solid " + POWER_EDGE,
               color: POWER_INK,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              transform: `rotate(${spot.r}deg)`,
+              transform: `rotate(${placed.rotate}deg)`,
               background: POWER_FILL,
               boxShadow: "inset 0 0 0 3px " + POWER_EDGE,
               fontFamily: TYPE,
               zIndex: index + 1,
             }}
           >
-            <SetMark code={COMMANDER_SYMBOL} ink={POWER_HEX} size={102} opaque />
+            <SetMark code={COMMANDER_SYMBOL} ink={POWER_HEX} size={Math.round(placed.size * 0.52)} opaque />
           </div>
         );
       })}
@@ -389,12 +539,14 @@ function PassportField({
   size = 32,
   gap = 0,
   accessory,
+  indent = 0,
 }: {
   label: string;
   value?: string;
   size?: number;
   gap?: number;
   accessory?: ReactNode;
+  indent?: number;
 }) {
   const text = value?.trim() || "—";
   return (
@@ -402,6 +554,7 @@ function PassportField({
       style={{
         marginTop: 10,
         marginBottom: gap,
+        marginLeft: indent,
         flexShrink: 0,
         display: "flex",
         alignItems: "baseline",
@@ -543,11 +696,14 @@ export function PassportSpread({
     ? shown
     : [undefined, undefined, undefined].map(() => ({ name: undefined, imageUrl: undefined }));
   const stacked = Boolean(secondaryImage);
-  const commanderMaxW = CONTENT_WIDTH - QR_COL - COL_GAP - INFO_RESERVE;
+  const commanderMaxW = stacked ? LEFT_PAGE - QR_COL - COL_GAP : LEFT_PAGE - 168;
   const frontW = commanderWidthForHeight(CONTENT_HEIGHT, commanderMaxW, stacked, sliceCrop);
   const frontH = Math.round(frontW * CARD_ASPECT);
   const sliceHeights = stacked ? sliceHeightsForWidth(frontW, sliceCrop) : null;
-  const rightWidth = CONTENT_WIDTH - frontW - QR_COL - COL_GAP - TEXT_INSET;
+  const stackH = stacked && sliceHeights ? sliceHeights.nameHeight + frontH + sliceHeights.rulesHeight : frontH;
+  const cardTop = Math.max(0, Math.round((CONTENT_HEIGHT - stackH) / 2));
+  const cardLeft = stacked ? 0 : Math.round((LEFT_PAGE - frontW) / 2);
+  const rightWidth = CONTENT_WIDTH - LEFT_PAGE - TEXT_INSET;
   const titleSize = Math.max(42, Math.min(92, Math.floor((rightWidth - 8) / textUnits(deckName))));
   const notes = description?.trim() || "Type a short description of how this deck plays.";
   const fieldColWidth = Math.max(280, rightWidth - QR - 24);
@@ -562,7 +718,15 @@ export function PassportSpread({
   const fieldSize = (value: string | undefined, max = 40) =>
     Math.max(28, Math.min(max, Math.floor((fieldColWidth - 200) / textUnits(value?.trim() || "—"))));
   const stampSeed = passportNo(deckUrl);
-  const creaseLeft = INNER_PAD_X + frontW + COL_GAP + QR_COL - 22;
+  const creaseLeft = INNER_PAD_X + LEFT_PAGE - 22;
+  const heroTop = cardTop + (stacked && sliceHeights ? sliceHeights.nameHeight : 0);
+  const artBox: ArtBox = {
+    cardLeft,
+    cardRight: cardLeft + frontW,
+    artTop: heroTop + Math.round(frontH * ART_TOP_FRAC),
+    artBottom: heroTop + Math.round(frontH * ART_BOTTOM_FRAC),
+  };
+  const stampLayout = layoutCommanderStamps(artBox, stampSeed, pips.length, power, Boolean(setCode));
 
   return (
     <article
@@ -623,18 +787,23 @@ export function PassportSpread({
         <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "stretch", gap: COL_GAP }}>
           <section
             style={{
-              width: frontW,
+              width: LEFT_PAGE,
               flex: "0 0 auto",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
               minHeight: 0,
               position: "relative",
               zIndex: 3,
               overflow: "visible",
             }}
           >
-            <div style={{ width: frontW, position: "relative", zIndex: 1 }}>
+            <div
+              style={{
+                position: "absolute",
+                left: cardLeft,
+                top: cardTop,
+                width: frontW,
+                zIndex: 1,
+              }}
+            >
               {stacked && secondaryImage && sliceHeights ? (
                 <CardNameSlice
                   src={secondaryImage}
@@ -696,29 +865,17 @@ export function PassportSpread({
                 />
               ) : null}
             </div>
-          </section>
-
-          <section
-            style={{
-              width: QR_COL,
-              flex: "0 0 auto",
-              display: "flex",
-              flexDirection: "column",
-              minHeight: 0,
-              position: "relative",
-              zIndex: 5,
-              pointerEvents: "none",
-              overflow: "visible",
-            }}
-          >
-            <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
-              <VisaColorPips colors={pips} seed={stampSeed} />
-            </div>
-            <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
-              {power > 0 ? <PowerStamps count={power} seed={stampSeed} /> : null}
-            </div>
-            <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
-              {setCode ? <SetSymbolStamp code={setCode} seed={stampSeed} /> : null}
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                zIndex: 5,
+                pointerEvents: "none",
+              }}
+            >
+              <VisaColorPips colors={pips} placements={stampLayout.pips} />
+              {power > 0 ? <PowerStamps placements={stampLayout.power} /> : null}
+              {setCode ? <SetSymbolStamp code={setCode} placed={stampLayout.set} /> : null}
             </div>
           </section>
 
@@ -769,7 +926,12 @@ export function PassportSpread({
             <div style={{ display: "flex", alignItems: "flex-start", gap: 20, minWidth: 0 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <PassportField label="Full name" value={fullName} size={fieldSize(fullName)} />
-                <PassportField label="Alias" value={aliasValue} size={fieldSize(aliasValue)} />
+                <PassportField
+                  label="Alias"
+                  value={aliasValue}
+                  size={fieldSize(aliasValue)}
+                  indent={FULL_NAME_INDENT}
+                />
                 <PassportField
                   label="Birth city"
                   value={setName}
