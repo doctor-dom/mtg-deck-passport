@@ -43,6 +43,7 @@ function assemble(source: NormalizedDeck["source"], id: string, originalUrl: str
   const hasOathbreaker = pieces.cards.some((card) => card.board === "oathbreaker");
   const spotlightKind = spotlightKindFrom(pieces.format, { hasCommander, hasOathbreaker });
   const commanders = heroesFor(pieces.cards, spotlightKind);
+  const companion = pieces.cards.find((card) => card.board === "companion");
   const main = pieces.cards.filter((card) => card.board === "main");
   const fromHeroes = normalizeColors(commanders.flatMap((card) => card.colorIdentity));
   const fromDeck = normalizeColors(main.flatMap((card) => card.colorIdentity));
@@ -62,6 +63,7 @@ function assemble(source: NormalizedDeck["source"], id: string, originalUrl: str
     spotlightKind,
     author: pieces.author,
     commanders,
+    companion,
     cards: main,
     colorIdentity,
     bracket: pieces.bracket,

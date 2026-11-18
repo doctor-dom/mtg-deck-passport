@@ -18,6 +18,9 @@ function asNumber(value: unknown): number | null {
 
 function boardFor(names: string[], companion: boolean): Board {
   const normalized = names.map((name) => name.toLowerCase());
+  if (companion || normalized.some((name) => name === "companion" || name === "companions")) {
+    return "companion";
+  }
   if (normalized.some((name) => name === "commander" || name === "commanders")) {
     return "commander";
   }
@@ -30,7 +33,6 @@ function boardFor(names: string[], companion: boolean): Board {
   ) {
     return "side";
   }
-  if (companion) return "side";
   return "main";
 }
 

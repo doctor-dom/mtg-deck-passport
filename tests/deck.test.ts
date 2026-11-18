@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { readBracket } from "../lib/bracket";
+import { passportTypeLine, readBracket } from "../lib/bracket";
 import { parseCardSpec, specFromCard } from "../lib/card-spec";
 import { faceImages } from "../lib/faces";
-import { togglePlaystyle } from "../lib/playstyle";
+import { endorsementsFromThemes, THEMES, toggleTheme } from "../lib/themes";
 import { normalizeColors } from "../lib/colors";
 import { parseArchidektDeck } from "../lib/decks/parse-archidekt";
 import { parseManaboxHtml } from "../lib/decks/parse-manabox";
@@ -105,6 +105,42 @@ describe("mana curve", () => {
 });
 
 describe("deck parsers", () => {
+  it("reads a Moxfield companion in its own slot", () => {
+    const parsed = parseMoxfieldDeck({
+      name: "Lurrus",
+      format: "commander",
+      boards: {
+        commanders: {
+          cards: {
+            "id-1": {
+              quantity: 1,
+              card: {
+                name: "Aminatou, the Fateshifter",
+                cmc: 3,
+                type_line: "Legendary Planeswalker — Aminatou",
+                color_identity: ["W", "U"],
+              },
+            },
+          },
+        },
+        companions: {
+          cards: {
+            "id-2": {
+              quantity: 1,
+              card: {
+                name: "Lurrus of the Dream-Den",
+                cmc: 3,
+                type_line: "Legendary Creature — Cat Nightmare",
+                color_identity: ["W", "B"],
+              },
+            },
+          },
+        },
+      },
+    });
+    assert.equal(parsed.cards.find((entry) => entry.board === "companion")?.name, "Lurrus of the Dream-Den");
+  });
+
   it("treats a Moxfield commander board as the extra spotlight", () => {
     const parsed = parseMoxfieldDeck({
       name: "EDH Oni Ninja",
@@ -158,6 +194,31 @@ describe("deck parsers", () => {
       }),
       "commander",
     );
+  });
+
+  it("reads an Archidekt companion separately from the sideboard", () => {
+    const parsed = parseArchidektDeck({
+      name: "Lurrus",
+      deckFormat: 3,
+      categories: [{ id: 1, name: "Commander" }, { id: 2, name: "Companion" }],
+      cards: [
+        {
+          quantity: 1,
+          companion: true,
+          categories: ["Companion"],
+          card: {
+            edition: { editioncode: "iko" },
+            oracleCard: {
+              name: "Lurrus of the Dream-Den",
+              cmc: 3,
+              types: ["Creature"],
+            },
+          },
+        },
+      ],
+    });
+    assert.equal(parsed.cards[0]?.board, "companion");
+    assert.equal(parsed.cards[0]?.name, "Lurrus of the Dream-Den");
   });
 
   it("reads an Archidekt commander category separately from the 99", () => {
@@ -268,10 +329,20 @@ describe("passport stamps", () => {
     assert.equal(readBracket("cedh"), undefined);
   });
 
-  it("keeps at most two playstyle tags", () => {
-    assert.deepEqual(togglePlaystyle(["aggro"], "ramp"), ["aggro", "ramp"]);
-    assert.deepEqual(togglePlaystyle(["aggro", "ramp"], "control"), ["aggro", "ramp"]);
-    assert.deepEqual(togglePlaystyle(["aggro", "ramp"], "aggro"), ["ramp"]);
+  it("formats passport type as a level line", () => {
+    assert.equal(passportTypeLine(2), "Level Two - Core");
+    assert.equal(passportTypeLine(null), undefined);
+  });
+
+  it("keeps at most three theme tags", () => {
+    assert.equal(THEMES.length, 94);
+    assert.deepEqual(toggleTheme(["aggro"], "ramp"), ["aggro", "ramp"]);
+    assert.deepEqual(toggleTheme(["aggro", "ramp"], "control"), ["aggro", "ramp", "control"]);
+    assert.deepEqual(
+      toggleTheme(["aggro", "ramp", "control"], "vehicles"),
+      ["aggro", "ramp", "control"],
+    );
+    assert.equal(endorsementsFromThemes(["vehicles", "ramp"]), "Vehicles, Ramp");
   });
 
   it("keeps a separate back image only when the second face has one", () => {

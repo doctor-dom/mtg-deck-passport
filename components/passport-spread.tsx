@@ -1,9 +1,20 @@
+"use client";
+
 /* Card images stay as plain <img> tags so the PNG export can inline them. */
 /* eslint-disable @next/next/no-img-element */
-import { bracketName } from "@/lib/bracket";
-import { playstyleLabel, type Playstyle } from "@/lib/playstyle";
+import { passportTypeLine } from "@/lib/bracket";
+import {
+  CARD_ASPECT,
+  type CardSliceCrop,
+  commanderWidthForHeight,
+  detectSlicesFromUrl,
+  nameObjectPositionY,
+  rulesObjectPositionY,
+  SECONDARY_SLICE_CROP,
+  sliceHeightsForWidth,
+} from "@/lib/card-crop";
 import type { ManaColor } from "@/lib/types";
-import { displayUrl } from "@/lib/urls";
+import { useEffect, useState, type ReactNode } from "react";
 
 export const POSTER_WIDTH = 2000;
 export const POSTER_HEIGHT = 1280;
@@ -12,19 +23,72 @@ const TYPE = "var(--font-typewriter), 'Courier New', Courier, monospace";
 const INK = "#1a3148";
 const PAPER = "#e7f2fc";
 const FRAME = "#c9dff3";
-const STAMP_INK = "rgba(30, 75, 122, 0.78)";
-const STAMP_EDGE = "rgba(30, 75, 122, 0.34)";
-const STAMP_FILL = "rgba(231, 242, 252, 0.14)";
-const PLAY_INK = "rgba(16, 99, 48, 0.82)";
-const PLAY_EDGE = "rgba(21, 122, 58, 0.38)";
-const PLAY_FILL = "rgba(214, 242, 222, 0.16)";
-const POWER_INK = "rgba(156, 43, 43, 0.78)";
-const POWER_EDGE = "rgba(156, 43, 43, 0.36)";
-const POWER_FILL = "rgba(252, 236, 236, 0.14)";
-const POWER_HEX = "#9c2b2b";
+const POWER_INK = "rgba(118, 28, 28, 0.96)";
+const POWER_EDGE = "rgba(118, 28, 28, 0.9)";
+const POWER_FILL = "rgba(252, 228, 228, 0.58)";
+const POWER_HEX = "#8a2020";
 const GOLD = "#7a5b12";
 const GOLD_FILL = "#f6e3a1";
-const GOLD_EDGE = "#6e5310";
+const GOLD_EDGE = "#5c430c";
+
+const SPOT_W = 340;
+const SPOT_H = 475;
+const QR = 220;
+const QR_COL = 320;
+const SET_STAMP = 252;
+const POWER_STAMP = 196;
+const INFO_RESERVE = 1000;
+const COMMANDER_SYMBOL = "c14";
+const COL_GAP = 8;
+const TEXT_INSET = 72;
+const INNER_PAD_X = 18;
+const VISA_SYMBOL = 216;
+
+const PAPER_TEXTURE = [
+  "repeating-linear-gradient(90deg, rgba(28,58,88,0.04) 0px, rgba(28,58,88,0.04) 1px, transparent 1px, transparent 7px)",
+  "repeating-linear-gradient(0deg, rgba(255,255,255,0.2) 0px, rgba(255,255,255,0.2) 1px, transparent 1px, transparent 5px)",
+  "repeating-linear-gradient(24deg, transparent 0 9px, rgba(60,100,140,0.055) 9px 10px)",
+  "repeating-linear-gradient(-21deg, transparent 0 12px, rgba(255,255,255,0.08) 12px 13px)",
+  "repeating-radial-gradient(circle at 10px 7px, rgba(26,49,72,0.05) 0 0.55px, transparent 0.7px 11px)",
+  "repeating-radial-gradient(circle at 17px 19px, rgba(90,60,40,0.028) 0 0.45px, transparent 0.65px 13px)",
+  "radial-gradient(ellipse at 50% -8%, rgba(255,255,255,0.36), transparent 46%)",
+  "linear-gradient(180deg, #eef6fc 0%, #e7f2fc 42%, #d7e6f3 100%)",
+].join(", ");
+
+const PAPER_NOISE = `url("data:image/svg+xml,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.72" numOctaves="4" stitchTiles="stitch"/><feColorMatrix type="matrix" values="0 0 0 0 0.10  0 0 0 0 0.20  0 0 0 0 0.32  0 0 0 0.08 0"/></filter><rect width="100%" height="100%" filter="url(#n)"/></svg>',
+)}")`;
+
+type StampSpot = { x: number; y: number; r: number };
+
+const PIP_SPOTS: StampSpot[] = [
+  { x: -92, y: 88, r: -18 },
+  { x: 108, y: 2, r: 14 },
+  { x: 36, y: 164, r: -8 },
+  { x: -24, y: 252, r: 17 },
+  { x: 112, y: 218, r: -15 },
+];
+
+const PIP_STACK = [5, 2, 3, 4, 6];
+
+const POWER_SPOTS: StampSpot[] = [
+  { x: -48, y: 12, r: -16 },
+  { x: 72, y: 158, r: 11 },
+  { x: -18, y: 268, r: -10 },
+  { x: 86, y: 214, r: 14 },
+  { x: 22, y: 330, r: -8 },
+];
+
+function jitteredSpot(seed: string, index: number, base: StampSpot): StampSpot {
+  const len = Math.max(seed.length, 1);
+  const a = seed.charCodeAt(index % len);
+  const b = seed.charCodeAt((index * 3 + 1) % len);
+  return {
+    x: base.x + ((a * 13 + index * 19) % 31) - 15,
+    y: base.y + ((b * 11 + index * 17) % 27) - 13,
+    r: base.r + ((a + b + index * 23) % 21) - 10,
+  };
+}
 
 const PIP_SRC: Record<ManaColor | "C", string> = {
   W: "/mana/W.svg",
@@ -35,15 +99,8 @@ const PIP_SRC: Record<ManaColor | "C", string> = {
   C: "/mana/C.svg",
 };
 
-const HERO_W = 522;
-const HERO_H = 730;
-const SPOT_W = 340;
-const SPOT_H = 475;
-const QR = 328;
-const COMMANDER_SYMBOL = "c14";
-const LEFT_COL = 850;
-const COL_GAP = 8;
-const TEXT_INSET = 72;
+const CONTENT_WIDTH = POSTER_WIDTH - 16 * 2 - 18 * 2;
+const CONTENT_HEIGHT = POSTER_HEIGHT - 16 * 2 - 16 - 14;
 
 export type PassportHighlight = {
   name: string;
@@ -53,15 +110,16 @@ export type PassportHighlight = {
 export type PassportSpreadProps = {
   deckName: string;
   commanderName?: string;
-  partnerLine?: string;
+  aliasName?: string;
+  companionName?: string;
   description?: string;
   colors: ManaColor[];
   showColorless?: boolean;
   heroImage?: string;
   heroName?: string;
-  backImage?: string;
-  backName?: string;
-  showingBack?: boolean;
+  secondaryImage?: string;
+  secondaryName?: string;
+  secondaryIsBackFace?: boolean;
   highlights: PassportHighlight[];
   deckUrl?: string;
   qrDataUrl?: string;
@@ -69,7 +127,6 @@ export type PassportSpreadProps = {
   commanderDeck: boolean;
   bracket?: number | null;
   formatLabel: string;
-  playstyles: Playstyle[];
   setCode?: string;
   setName?: string;
   endorsements?: string;
@@ -101,7 +158,7 @@ function SetMark({ code, ink, size, opaque = false }: { code?: string; ink: stri
     <img
       alt=""
       src={symbolSrc(code, ink)}
-      style={{ width: size, height: size, objectFit: "contain", flex: "0 0 auto", opacity: opaque ? 1 : 0.8 }}
+      style={{ width: size, height: size, objectFit: "contain", flex: "0 0 auto", opacity: opaque ? 1 : 0.95 }}
       onError={(event) => {
         const stamp = event.currentTarget.closest("[data-set-stamp]");
         if (stamp instanceof HTMLElement) stamp.style.display = "none";
@@ -123,203 +180,172 @@ function textUnits(value: string): number {
   return Math.max(units, 1);
 }
 
-function DeckTypeStamp({ label }: { label: string }) {
-  const size = label.length > 14 ? 36 : label.length > 10 ? 46 : 56;
-  return (
-    <div
-      style={{
-        width: 640,
-        height: 292,
-        borderRadius: "50%",
-        border: "8px solid " + STAMP_EDGE,
-        color: STAMP_INK,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: STAMP_FILL,
-        boxShadow: "inset 0 0 0 3px " + STAMP_EDGE,
-        fontFamily: TYPE,
-      }}
-    >
-      <div
-        style={{
-          width: 560,
-          height: 220,
-          borderRadius: "50%",
-          border: "2px solid " + STAMP_EDGE,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          textAlign: "center",
-          padding: "8px 36px",
-          boxSizing: "border-box",
-          gap: 8,
-        }}
-      >
-        <div style={{ fontSize: 18, letterSpacing: "0.32em", lineHeight: 1, flex: "0 0 auto" }}>VISA</div>
-        <div style={{ fontSize: size, lineHeight: 0.95, flex: "0 0 auto" }}>{label}</div>
-        <div style={{ fontSize: 18, letterSpacing: "0.2em", lineHeight: 1, flex: "0 0 auto" }}>ADMITTED</div>
-      </div>
-    </div>
-  );
-}
-
-function SetSymbolStamp({ code }: { code?: string }) {
+function SetSymbolStamp({ code, seed }: { code?: string; seed: string }) {
   if (!code) return null;
+  const spot = jitteredSpot(seed, 8, { x: 22, y: 36, r: -18 });
   return (
     <div
       data-set-stamp=""
       style={{
-        width: 150,
-        height: 150,
+        position: "absolute",
+        left: spot.x,
+        bottom: 10,
+        width: SET_STAMP,
+        height: SET_STAMP,
         borderRadius: "50%",
-        border: "8px solid " + GOLD_EDGE,
+        border: "12px solid " + GOLD_EDGE,
         background: GOLD_FILL,
-        boxShadow: "inset 0 0 0 3px " + GOLD_EDGE,
+        boxShadow: "inset 0 0 0 5px " + GOLD_EDGE,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        transform: "rotate(-18deg)",
+        transform: `rotate(${spot.r}deg)`,
+        zIndex: 2,
       }}
     >
-      <SetMark code={code} ink={GOLD} size={92} opaque />
+      <SetMark code={code} ink={GOLD} size={156} opaque />
     </div>
   );
 }
 
-function CommanderVisa({
-  label,
-  setCode,
-  rotate,
-  symbolTop = -58,
-}: {
-  label: string;
-  setCode?: string;
-  rotate: number;
-  symbolTop?: number;
-}) {
+function VisaColorPips({ colors, seed }: { colors: readonly (ManaColor | "C")[]; seed: string }) {
+  if (colors.length === 0) return null;
   return (
-    <div style={{ position: "relative", width: 640, height: 292, transform: `rotate(${rotate}deg)` }}>
-      <DeckTypeStamp label={label} />
-      <div style={{ position: "absolute", left: 245, top: symbolTop, zIndex: 5 }}>
-        <SetSymbolStamp code={setCode} />
-      </div>
-    </div>
+    <>
+      {colors.map((color, index) => {
+        const spot = jitteredSpot(seed, index, PIP_SPOTS[index] ?? PIP_SPOTS[0]);
+        return (
+          <img
+            key={`${color}-${index}`}
+            alt={color === "C" ? "Colorless" : color}
+            src={PIP_SRC[color]}
+            style={{
+              position: "absolute",
+              left: spot.x,
+              top: spot.y,
+              width: VISA_SYMBOL,
+              height: VISA_SYMBOL,
+              transform: `rotate(${spot.r}deg)`,
+              zIndex: PIP_STACK[index] ?? index + 1,
+            }}
+          />
+        );
+      })}
+    </>
   );
 }
 
-function PowerStamps({ count, caption }: { count: number; caption?: string }) {
-  const rotations = [-16, -6, 9, -12, 4];
+function PowerStamps({ count, seed }: { count: number; seed: string }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
-      <div style={{ display: "flex", alignItems: "center" }}>
-        {Array.from({ length: count }, (_, index) => (
+    <>
+      {Array.from({ length: count }, (_, index) => {
+        const spot = jitteredSpot(seed, index + 3, POWER_SPOTS[index] ?? POWER_SPOTS[0]);
+        return (
           <div
             key={index}
             style={{
-              width: 112,
-              height: 112,
-              marginLeft: index === 0 ? 0 : -34,
+              position: "absolute",
+              left: spot.x,
+              top: spot.y,
+              width: POWER_STAMP,
+              height: POWER_STAMP,
               borderRadius: "50%",
-              border: "3px solid " + POWER_EDGE,
+              border: "6px solid " + POWER_EDGE,
               color: POWER_INK,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              transform: `rotate(${rotations[index % rotations.length]}deg)`,
+              transform: `rotate(${spot.r}deg)`,
               background: POWER_FILL,
-              boxShadow: "inset 0 0 0 1px " + POWER_EDGE,
+              boxShadow: "inset 0 0 0 3px " + POWER_EDGE,
               fontFamily: TYPE,
+              zIndex: index + 1,
             }}
           >
-            <SetMark code={COMMANDER_SYMBOL} ink={POWER_HEX} size={52} />
+            <SetMark code={COMMANDER_SYMBOL} ink={POWER_HEX} size={102} opaque />
           </div>
-        ))}
-      </div>
-      {caption ? (
-        <div style={{ fontSize: 24, letterSpacing: "0.03em", color: POWER_INK }}>{caption}</div>
-      ) : null}
-    </div>
+        );
+      })}
+    </>
   );
 }
 
-function PlaystyleStamp({ styles }: { styles: Playstyle[] }) {
-  const label = styles.length ? playstyleLabel(styles) : "CHOOSE";
+function useSliceCrop(src?: string): CardSliceCrop {
+  const [crop, setCrop] = useState<CardSliceCrop>(SECONDARY_SLICE_CROP);
+  useEffect(() => {
+    if (!src) {
+      setCrop(SECONDARY_SLICE_CROP);
+      return;
+    }
+    let cancelled = false;
+    const proxied = mediaSrc(src);
+    detectSlicesFromUrl(proxied)
+      .then((next) => {
+        if (!cancelled) setCrop(next);
+      })
+      .catch(() => {
+        if (!cancelled) setCrop(SECONDARY_SLICE_CROP);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [src]);
+  return crop;
+}
+
+function CardNameSlice({
+  src,
+  width,
+  height,
+  crop,
+}: {
+  src: string;
+  width: number;
+  height: number;
+  crop: CardSliceCrop;
+}) {
   return (
-    <div
+    <img
+      alt=""
+      src={mediaSrc(src)}
       style={{
-        width: 440,
-        padding: "18px 20px 20px",
-        border: "8px solid " + PLAY_EDGE,
-        color: PLAY_INK,
-        textAlign: "center",
-        transform: "rotate(6deg)",
-        background: PLAY_FILL,
-        boxShadow: "inset 0 0 0 2px " + PLAY_EDGE,
-        fontFamily: TYPE,
+        display: "block",
+        width,
+        height,
+        objectFit: "cover",
+        objectPosition: `center ${nameObjectPositionY(crop)}`,
+        borderRadius: "10px 10px 0 0",
+        background: "#d5e4f2",
       }}
-    >
-      <div style={{ fontSize: 18, letterSpacing: "0.22em" }}>PLAYSTYLE</div>
-      <div style={{ fontSize: label.length > 16 ? 32 : 42, lineHeight: 1.05, marginTop: 8 }}>{label}</div>
-    </div>
+    />
   );
 }
 
-function MakerStamp() {
+function CardRulesSlice({
+  src,
+  width,
+  height,
+  crop,
+}: {
+  src: string;
+  width: number;
+  height: number;
+  crop: CardSliceCrop;
+}) {
   return (
-    <div
+    <img
+      alt=""
+      src={mediaSrc(src)}
       style={{
-        position: "relative",
-        width: 500,
-        height: 252,
-        borderRadius: "50%",
-        border: "8px solid " + STAMP_EDGE,
-        color: STAMP_INK,
-        transform: "rotate(4deg)",
-        background: STAMP_FILL,
-        boxShadow: "inset 0 0 0 3px " + STAMP_EDGE,
-        fontFamily: TYPE,
-        flex: "0 0 auto",
+        display: "block",
+        width,
+        height,
+        objectFit: "cover",
+        objectPosition: `center ${rulesObjectPositionY(crop)}`,
+        borderRadius: "0 0 6px 6px",
+        background: "#d5e4f2",
       }}
-    >
-      <div
-        style={{
-          position: "absolute",
-          top: 18,
-          left: 70,
-          right: 70,
-          textAlign: "center",
-          fontSize: 26,
-          letterSpacing: "0.18em",
-          lineHeight: 1,
-        }}
-      >
-        made by:
-      </div>
-      <div
-        style={{
-          position: "absolute",
-          top: 64,
-          left: 46,
-          width: 408,
-          height: 156,
-          borderRadius: "50%",
-          border: "2px solid " + STAMP_EDGE,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          textAlign: "center",
-          boxSizing: "border-box",
-          padding: "10px 18px 6px",
-          gap: 2,
-        }}
-      >
-        <div style={{ fontSize: 50, lineHeight: 0.88 }}>MTG</div>
-        <div style={{ fontSize: 36, lineHeight: 1 }}>Deck Passport</div>
-      </div>
-    </div>
+    />
   );
 }
 
@@ -352,28 +378,55 @@ function DeckLink({
           }}
         />
       )}
-      <p
-        style={{
-          margin: "10px 0 0",
-          width: "100%",
-          fontSize: qrSize > 260 ? 28 : 22,
-          lineHeight: 1.25,
-          textAlign: "center",
-          overflowWrap: "break-word",
-        }}
-      >
-        {deckUrl ? displayUrl(deckUrl).replaceAll("/", "/\u200b") : "Deck link appears here"}
-      </p>
-      <p style={{ margin: "6px 0 0", fontSize: 16, letterSpacing: "0.08em" }}>No. {passportNo(deckUrl)}</p>
+      <p style={{ margin: "8px 0 0", fontSize: 15, letterSpacing: "0.08em" }}>No. {passportNo(deckUrl)}</p>
     </div>
   );
 }
 
-function PassportField({ label, value, size = 32, gap = 0 }: { label: string; value?: string; size?: number; gap?: number }) {
+function PassportField({
+  label,
+  value,
+  size = 32,
+  gap = 0,
+  accessory,
+}: {
+  label: string;
+  value?: string;
+  size?: number;
+  gap?: number;
+  accessory?: ReactNode;
+}) {
+  const text = value?.trim() || "—";
   return (
-    <div style={{ marginTop: 10, marginBottom: gap, flexShrink: 0 }}>
-      <p style={{ margin: 0, fontSize: 21, letterSpacing: "0.14em" }}>{label.toUpperCase()}</p>
-      <p style={{ margin: "3px 0 0", fontSize: size, lineHeight: 1.18, whiteSpace: "pre-wrap" }}>{value?.trim() || "—"}</p>
+    <div
+      style={{
+        marginTop: 10,
+        marginBottom: gap,
+        flexShrink: 0,
+        display: "flex",
+        alignItems: "baseline",
+        gap: 14,
+        minWidth: 0,
+      }}
+    >
+      <p style={{ margin: 0, fontSize: 21, letterSpacing: "0.14em", flex: "0 0 auto", whiteSpace: "nowrap" }}>
+        {label.toUpperCase()}
+      </p>
+      <div
+        style={{
+          margin: 0,
+          flex: 1,
+          minWidth: 0,
+          display: "flex",
+          alignItems: "baseline",
+          gap: 8,
+          fontSize: size,
+          lineHeight: 1.18,
+        }}
+      >
+        {accessory}
+        <span style={{ whiteSpace: "pre-wrap" }}>{text}</span>
+      </div>
     </div>
   );
 }
@@ -460,15 +513,15 @@ function PinnedCard({
 export function PassportSpread({
   deckName,
   commanderName,
-  partnerLine,
+  aliasName,
+  companionName,
   description,
   colors,
   showColorless = false,
   heroImage,
   heroName,
-  backImage,
-  backName,
-  showingBack = false,
+  secondaryImage,
+  secondaryName,
   highlights,
   deckUrl,
   qrDataUrl,
@@ -476,45 +529,40 @@ export function PassportSpread({
   commanderDeck,
   bracket,
   formatLabel,
-  playstyles,
   setCode,
   setName,
   endorsements,
 }: PassportSpreadProps) {
   const pips = colors.length > 0 ? colors : showColorless ? (["C"] as const) : [];
   const credit = byline?.replace(/^by\s+/i, "").trim();
+  const sliceCrop = useSliceCrop(secondaryImage);
   const power = commanderDeck ? Math.max(0, Math.min(5, bracket ?? 0)) : 0;
   const shown = highlights.slice(0, 3);
   const rotations = [-1.4, 1.1, -0.7];
   const pinned = shown.length
     ? shown
     : [undefined, undefined, undefined].map(() => ({ name: undefined, imageUrl: undefined }));
-  const dual = Boolean(backImage);
-  const frontW = HERO_W;
-  const frontH = HERO_H;
-  const sideW = SPOT_W;
-  const sideH = SPOT_H;
-  const leftCol = LEFT_COL;
-  const textInset = TEXT_INSET;
-  const heroBox = HERO_H;
-  const rightWidth = POSTER_WIDTH - 16 * 2 - 18 * 2 - leftCol - COL_GAP - textInset;
+  const stacked = Boolean(secondaryImage);
+  const commanderMaxW = CONTENT_WIDTH - QR_COL - COL_GAP - INFO_RESERVE;
+  const frontW = commanderWidthForHeight(CONTENT_HEIGHT, commanderMaxW, stacked, sliceCrop);
+  const frontH = Math.round(frontW * CARD_ASPECT);
+  const sliceHeights = stacked ? sliceHeightsForWidth(frontW, sliceCrop) : null;
+  const rightWidth = CONTENT_WIDTH - frontW - QR_COL - COL_GAP - TEXT_INSET;
   const titleSize = Math.max(42, Math.min(92, Math.floor((rightWidth - 8) / textUnits(deckName))));
   const notes = description?.trim() || "Type a short description of how this deck plays.";
+  const fieldColWidth = Math.max(280, rightWidth - QR - 24);
   const notesSize = Math.max(34, Math.min(50, Math.round((rightWidth * 3.4) / textUnits(notes))));
-  const makerCol = Math.max(540, rightWidth - 480);
-  const fieldWidth = rightWidth - makerCol - 12;
-  const passportName =
-    (showingBack ? (commanderName || heroName || "").split(" // ")[0]?.trim() : undefined) ||
-    commanderName ||
-    heroName ||
-    formatLabel;
+  const commanderLabel = commanderName || heroName;
+  const fullName = commanderLabel
+    ? commanderLabel.split(" // ")[0]?.trim() || commanderLabel
+    : formatLabel;
+  const aliasValue = aliasName?.trim() || "none";
+  const companionValue = companionName?.trim() || "none";
+  const passportType = passportTypeLine(bracket) ?? "—";
   const fieldSize = (value: string | undefined, max = 40) =>
-    Math.max(28, Math.min(max, Math.floor((fieldWidth - 8) / textUnits(value?.trim() || "—"))));
-  const sideLeft = frontW + 34;
-  const sideTop = 262;
-  const powerWidth = 112 + Math.max(0, power - 1) * 78;
-  const levelLine =
-    power > 0 ? `Level ${power} — ${bracketName(bracket) ?? "Unrated"}` : undefined;
+    Math.max(28, Math.min(max, Math.floor((fieldColWidth - 200) / textUnits(value?.trim() || "—"))));
+  const stampSeed = passportNo(deckUrl);
+  const creaseLeft = INNER_PAD_X + frontW + COL_GAP + QR_COL - 22;
 
   return (
     <article
@@ -533,18 +581,69 @@ export function PassportSpread({
         style={{
           flex: 1,
           minWidth: 0,
-          background: PAPER,
+          backgroundColor: PAPER,
+          backgroundImage: PAPER_TEXTURE,
           borderRadius: 18,
           padding: "16px 18px 14px",
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
+          position: "relative",
+          boxShadow: "inset 0 0 48px rgba(26,49,72,0.08)",
         }}
       >
-        <div style={{ flex: 1, minHeight: 0, display: "flex", gap: COL_GAP }}>
-          <section style={{ width: leftCol, flex: "0 0 auto", display: "flex", flexDirection: "column", minHeight: 0, position: "relative", zIndex: 1 }}>
-            <div style={{ position: "relative", height: heroBox, flex: "0 0 auto" }}>
-              <div style={{ width: frontW, position: "relative", zIndex: 1 }}>
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            inset: 0,
+            borderRadius: 18,
+            pointerEvents: "none",
+            zIndex: 0,
+            opacity: 0.42,
+            backgroundImage: PAPER_NOISE,
+            backgroundSize: "160px 160px",
+            mixBlendMode: "multiply",
+          }}
+        />
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            left: creaseLeft,
+            width: 52,
+            pointerEvents: "none",
+            zIndex: 4,
+            background:
+              "linear-gradient(90deg, transparent 0%, rgba(26,49,72,0.06) 26%, rgba(18,40,64,0.26) 47%, rgba(255,255,255,0.5) 50%, rgba(18,40,64,0.24) 54%, rgba(26,49,72,0.06) 76%, transparent 100%)",
+          }}
+        />
+        <div style={{ flex: 1, minHeight: 0, display: "flex", alignItems: "stretch", gap: COL_GAP }}>
+          <section
+            style={{
+              width: frontW,
+              flex: "0 0 auto",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+              minHeight: 0,
+              position: "relative",
+              zIndex: 3,
+              overflow: "visible",
+            }}
+          >
+            <div style={{ width: frontW, position: "relative", zIndex: 1 }}>
+              {stacked && secondaryImage && sliceHeights ? (
+                <CardNameSlice
+                  src={secondaryImage}
+                  width={frontW}
+                  height={sliceHeights.nameHeight}
+                  crop={sliceCrop}
+                />
+              ) : null}
+              <div style={{ position: "relative", width: frontW }}>
                 {heroImage ? (
                   <img
                     alt={heroName ?? deckName}
@@ -553,9 +652,10 @@ export function PassportSpread({
                       width: frontW,
                       height: frontH,
                       objectFit: "cover",
-                      borderRadius: 10,
+                      borderRadius: stacked ? 0 : 10,
                       background: "#d5e4f2",
-                      boxShadow: "0 10px 22px rgba(26, 49, 72, 0.18)",
+                      boxShadow: stacked ? "none" : "0 10px 22px rgba(26, 49, 72, 0.18)",
+                      display: "block",
                     }}
                   />
                 ) : (
@@ -563,7 +663,7 @@ export function PassportSpread({
                     style={{
                       width: frontW,
                       height: frontH,
-                      borderRadius: 10,
+                      borderRadius: stacked ? 0 : 10,
                       border: "1px dashed rgba(26,49,72,0.35)",
                       display: "flex",
                       alignItems: "flex-end",
@@ -576,57 +676,84 @@ export function PassportSpread({
                   </div>
                 )}
               </div>
-              {dual && backImage ? (
-                <img
-                  alt={backName || "Partner"}
-                  src={mediaSrc(backImage)}
-                  style={{
-                    position: "absolute",
-                    left: sideLeft,
-                    top: sideTop,
-                    width: sideW,
-                    height: sideH,
-                    objectFit: "cover",
-                    borderRadius: 10,
-                    background: "#d5e4f2",
-                    boxShadow: "0 10px 22px rgba(26, 49, 72, 0.2)",
-                    zIndex: 4,
-                  }}
+              {stacked && secondaryImage && sliceHeights ? (
+                <CardRulesSlice
+                  src={secondaryImage}
+                  width={frontW}
+                  height={sliceHeights.rulesHeight}
+                  crop={sliceCrop}
                 />
               ) : null}
-              <div style={{ position: "absolute", left: 336, top: 48, zIndex: 3 }}>
-                <CommanderVisa label={formatLabel.toUpperCase()} setCode={setCode} rotate={13} />
-              </div>
-              <div style={{ position: "absolute", left: dual ? 472 : HERO_W - 110, top: dual ? 748 : 360, zIndex: 3 }}>
-                <PlaystyleStamp styles={playstyles} />
-              </div>
-              {power > 0 ? (
+              {stacked ? (
                 <div
                   style={{
                     position: "absolute",
-                    left: dual ? Math.min(sideLeft + 8, 900 - powerWidth) : HERO_W + 8,
-                    top: dual ? 888 : 524,
-                    zIndex: 4,
+                    inset: 0,
+                    borderRadius: 10,
+                    boxShadow: "0 10px 22px rgba(26, 49, 72, 0.18)",
+                    pointerEvents: "none",
                   }}
-                >
-                  <PowerStamps count={power} caption={levelLine} />
-                </div>
+                />
               ) : null}
-            </div>
-
-            <div style={{ flex: 1, display: "flex", alignItems: "center", minHeight: 0, paddingTop: 8 }}>
-              <DeckLink deckUrl={deckUrl} qrDataUrl={qrDataUrl} width={frontW} qrSize={QR} />
             </div>
           </section>
 
-          <section style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", position: "relative", zIndex: 2, paddingLeft: textInset }}>
-            {pips.length > 0 ? (
-              <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-                {pips.map((color) => (
-                  <img key={color} alt={color === "C" ? "Colorless" : color} src={PIP_SRC[color]} style={{ width: 42, height: 42 }} />
-                ))}
-              </div>
-            ) : null}
+          <section
+            style={{
+              width: QR_COL,
+              flex: "0 0 auto",
+              display: "flex",
+              flexDirection: "column",
+              minHeight: 0,
+              position: "relative",
+              zIndex: 5,
+              pointerEvents: "none",
+              overflow: "visible",
+            }}
+          >
+            <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
+              <VisaColorPips colors={pips} seed={stampSeed} />
+            </div>
+            <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
+              {power > 0 ? <PowerStamps count={power} seed={stampSeed} /> : null}
+            </div>
+            <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
+              {setCode ? <SetSymbolStamp code={setCode} seed={stampSeed} /> : null}
+            </div>
+          </section>
+
+          <section
+            style={{
+              flex: 1,
+              minWidth: 0,
+              display: "flex",
+              flexDirection: "column",
+              position: "relative",
+              zIndex: 2,
+              paddingLeft: TEXT_INSET,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 16,
+                marginBottom: 8,
+                minHeight: 42,
+              }}
+            >
+              {pips.length > 0
+                ? pips.map((color) => (
+                    <img
+                      key={color}
+                      alt={color === "C" ? "Colorless" : color}
+                      src={PIP_SRC[color]}
+                      style={{ width: 42, height: 42, flex: "0 0 auto" }}
+                    />
+                  ))
+                : null}
+              {credit ? <p style={{ margin: 0, fontSize: 22 }}>Issued to {credit}</p> : null}
+            </div>
             <h2
               style={{
                 margin: 0,
@@ -639,26 +766,21 @@ export function PassportSpread({
             >
               {deckName}
             </h2>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: fieldWidth, flex: "0 0 auto", minWidth: 0 }}>
-                <PassportField label="Passport name" value={passportName} size={fieldSize(passportName)} />
-                {showingBack && backName ? <p style={{ margin: "2px 0 0", fontSize: 22 }}>{backName}</p> : null}
-                {partnerLine ? <p style={{ margin: "2px 0 0", fontSize: 22 }}>{partnerLine}</p> : null}
-                {credit ? <p style={{ margin: "2px 0 0", fontSize: 22 }}>Issued to {credit}</p> : null}
-                <PassportField label="Place of birth" value={setName} size={fieldSize(setName)} />
-                <PassportField label="Endorsements" value={endorsements} size={fieldSize(endorsements)} />
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 20, minWidth: 0 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <PassportField label="Full name" value={fullName} size={fieldSize(fullName)} />
+                <PassportField label="Alias" value={aliasValue} size={fieldSize(aliasValue)} />
+                <PassportField
+                  label="Birth city"
+                  value={setName}
+                  size={fieldSize(setName)}
+                  accessory={setCode ? <SetMark code={setCode} ink={INK} size={36} opaque /> : undefined}
+                />
+                <PassportField label="Passport type" value={passportType} size={fieldSize(passportType, 34)} />
+                <PassportField label="Companion" value={companionValue} size={fieldSize(companionValue)} />
+                <PassportField label="Endorsements" value={endorsements} size={fieldSize(endorsements, 34)} />
               </div>
-              <div
-                style={{
-                  width: makerCol,
-                  flex: "0 0 auto",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <MakerStamp />
-              </div>
+              <DeckLink deckUrl={deckUrl} qrDataUrl={qrDataUrl} width={QR} qrSize={QR} />
             </div>
             <PassportField label="Notes" value={notes} size={notesSize} gap={14} />
 

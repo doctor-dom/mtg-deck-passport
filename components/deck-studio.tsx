@@ -1,12 +1,13 @@
 "use client";
 
+import { ThemePicker } from "@/components/theme-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { BRACKETS } from "@/lib/bracket";
-import { specFromCard } from "@/lib/card-spec";
-import { PLAYSTYLES, togglePlaystyle, type Playstyle } from "@/lib/playstyle";
+import type { Theme } from "@/lib/themes";
+import { endorsementsFromThemes } from "@/lib/themes";
 import { defaultPrintingId, printingOptionLabel } from "@/lib/printings";
 import type { DeckCard, NormalizedDeck, ResolvedPrinting } from "@/lib/types";
 import { slugify } from "@/lib/urls";
@@ -29,11 +30,12 @@ const SAMPLES = [
   },
 ];
 
-type Slot = {
-  input: string;
-  card?: ResolvedPrinting;
-  error?: string;
+type SpotlightChoice = {
+  card?: DeckCard;
+  printings: ResolvedPrinting[];
+  selectedId: string;
   loading: boolean;
+  error?: string;
 };
 
 type CommanderChoice = {
@@ -44,11 +46,19 @@ type CommanderChoice = {
   error?: string;
 };
 
-const EMPTY_SLOTS: Slot[] = [
-  { input: "", loading: false },
-  { input: "", loading: false },
-  { input: "", loading: false },
-];
+type SecondaryChoice = "none" | "partner" | "back";
+
+const EMPTY_SPOTLIGHT: SpotlightChoice = {
+  printings: [],
+  selectedId: "",
+  loading: false,
+};
+
+const EMPTY_SPOTLIGHTS: SpotlightChoice[] = [EMPTY_SPOTLIGHT, EMPTY_SPOTLIGHT, EMPTY_SPOTLIGHT];
+
+function spotlightCardKey(card: DeckCard): string {
+  return `${card.name}\0${card.set ?? ""}\0${card.collectorNumber ?? ""}`;
+}
 
 function cardCount(deck: NormalizedDeck): number {
   return [...deck.commanders, ...deck.cards].reduce((sum, card) => sum + card.quantity, 0);
@@ -61,55 +71,18 @@ export function DeckStudio() {
   const [loading, setLoading] = useState(false);
   const [description, setDescription] = useState("");
   const [byline, setByline] = useState("");
-  const [slots, setSlots] = useState<Slot[]>(EMPTY_SLOTS);
+  const [spotlights, setSpotlights] = useState<SpotlightChoice[]>(EMPTY_SPOTLIGHTS);
   const [commanders, setCommanders] = useState<CommanderChoice[]>([]);
   const [faceIndex, setFaceIndex] = useState(0);
   const [bracket, setBracket] = useState<number | null>(null);
-  const [playstyles, setPlaystyles] = useState<Playstyle[]>([]);
-  const [endorsements, setEndorsements] = useState("");
-  const [showBack, setShowBack] = useState(false);
-  const [showPartner, setShowPartner] = useState(true);
+  const [themes, setThemes] = useState<Theme[]>([]);
+  const [secondaryChoice, setSecondaryChoice] = useState<SecondaryChoice>("none");
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [scale, setScale] = useState(0.42);
   const frameRef = useRef<HTMLDivElement>(null);
   const posterRef = useRef<HTMLDivElement>(null);
-  const backAutoRef = useRef<string | null>(null);
-  const slotKey = slots.map((slot) => slot.input).join("\n");
-
-  async function resolveSlot(index: number, spec: string) {
-    setSlots((current) =>
-      current.map((slot, slotIndex) =>
-        slotIndex === index ? { ...slot, loading: true, error: undefined } : slot,
-      ),
-    );
-    try {
-      const response = await fetch("/api/cards/resolve", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ spec }),
-      });
-      const data = (await response.json()) as { card?: ResolvedPrinting; error?: string };
-      setSlots((current) =>
-        current.map((slot, slotIndex) => {
-          if (slotIndex !== index || slot.input.trim() !== spec) return slot;
-          if (!response.ok || !data.card) {
-            return { ...slot, loading: false, card: undefined, error: data.error ?? "Card not found." };
-          }
-          return { ...slot, loading: false, card: data.card, error: undefined };
-        }),
-      );
-    } catch {
-      setSlots((current) =>
-        current.map((slot, slotIndex) =>
-          slotIndex === index && slot.input.trim() === spec
-            ? { ...slot, loading: false, error: "Card lookup failed." }
-            : slot,
-        ),
-      );
-    }
-  }
-
+  const secondaryAutoRef = useRef<string | null>(null);
   useEffect(() => {
     const frame = frameRef.current;
     if (!frame) return;
@@ -163,31 +136,32 @@ export function DeckStudio() {
   }, [deck]);
 
   useEffect(() => {
-    const timers = slots.map((slot, index) => {
-      const spec = slot.input.trim();
-      if (!spec) return undefined;
-      return setTimeout(() => {
-        void resolveSlot(index, spec);
-      }, 450);
-    });
-    return () => {
-      timers.forEach((timer) => {
-        if (timer) clearTimeout(timer);
-      });
-    };
-    // slotKey is the only input that should retrigger resolution.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slotKey]);
-
-  useEffect(() => {
     if (!deck) return;
-    if (backAutoRef.current === deck.url) return;
+    if (secondaryAutoRef.current === deck.url) return;
+    if (commanders.some((entry) => entry.loading)) return;
     const entry = commanders[faceIndex] ?? commanders[0];
     const printing = entry?.printings.find((item) => item.id === entry.selectedId);
-    if (!printing?.backImageUrl) return;
-    backAutoRef.current = deck.url;
-    setShowBack(true);
+    const hasPartner = commanders.length > 1;
+    if (!printing?.backImageUrl && !hasPartner) return;
+    secondaryAutoRef.current = deck.url;
+    if (printing?.backImageUrl) setSecondaryChoice("back");
+    else if (hasPartner) setSecondaryChoice("partner");
   }, [deck, commanders, faceIndex]);
+
+  useEffect(() => {
+    const entry = commanders[faceIndex] ?? commanders[0];
+    const printing = entry?.printings.find((item) => item.id === entry.selectedId);
+    const hasPartner = commanders.length > 1;
+    setSecondaryChoice((current) => {
+      if (current === "back" && !printing?.backImageUrl) {
+        return hasPartner ? "partner" : "none";
+      }
+      if (current === "partner" && !hasPartner) {
+        return printing?.backImageUrl ? "back" : "none";
+      }
+      return current;
+    });
+  }, [commanders, faceIndex]);
 
   async function loadDeck(nextUrl: string) {
     const target = nextUrl.trim();
@@ -209,13 +183,12 @@ export function DeckStudio() {
       setDeck(data.deck);
       setByline(data.deck.author ?? "");
       setDescription("");
-      setSlots(EMPTY_SLOTS.map((slot) => ({ ...slot })));
+      setSpotlights(EMPTY_SPOTLIGHTS.map((slot) => ({ ...slot })));
       setFaceIndex(0);
       setBracket(data.deck.bracket ?? null);
-      setPlaystyles([]);
-      setEndorsements("");
-      setShowBack(false);
-      setShowPartner(true);
+      setThemes([]);
+      setSecondaryChoice("none");
+      secondaryAutoRef.current = null;
       setCommanders(
         data.deck.commanders.map((card) => ({
           card,
@@ -233,33 +206,65 @@ export function DeckStudio() {
     }
   }
 
-  function updateSlot(index: number, input: string) {
-    setSlots((current) =>
-      current.map((slot, slotIndex) =>
-        slotIndex === index
-          ? { input, loading: false, card: undefined, error: undefined }
-          : slot,
-      ),
-    );
+  async function loadSpotlightPrintings(index: number, card: DeckCard) {
+    try {
+      const response = await fetch(`/api/cards/printings?name=${encodeURIComponent(card.name)}`);
+      const data = (await response.json()) as { printings?: ResolvedPrinting[]; error?: string };
+      setSpotlights((current) =>
+        current.map((slot, slotIndex) => {
+          if (slotIndex !== index || slot.card?.name !== card.name) return slot;
+          const printings = data.printings ?? [];
+          return {
+            ...slot,
+            loading: false,
+            error: response.ok ? undefined : data.error,
+            printings,
+            selectedId: defaultPrintingId(printings, card),
+          };
+        }),
+      );
+    } catch {
+      setSpotlights((current) =>
+        current.map((slot, slotIndex) =>
+          slotIndex === index && slot.card?.name === card.name
+            ? { ...slot, loading: false, error: "Printings could not be loaded." }
+            : slot,
+        ),
+      );
+    }
   }
 
-  function fillFromDeck(spec: string) {
-    if (!spec) return;
-    setSlots((current) => {
-      const empty = current.findIndex((slot) => !slot.input.trim());
+  function assignSpotlight(card: DeckCard) {
+    setSpotlights((current) => {
+      const empty = current.findIndex((slot) => !slot.card);
       const target = empty === -1 ? current.length - 1 : empty;
+      void loadSpotlightPrintings(target, card);
       return current.map((slot, index) =>
-        index === target ? { input: spec, loading: false, card: undefined, error: undefined } : slot,
+        index === target
+          ? { card, printings: [], selectedId: "", loading: true, error: undefined }
+          : slot,
       );
     });
   }
 
+  function clearSpotlight(index: number) {
+    setSpotlights((current) =>
+      current.map((slot, slotIndex) => (slotIndex === index ? { ...EMPTY_SPOTLIGHT } : slot)),
+    );
+  }
+
   const face = commanders[faceIndex] ?? commanders[0];
   const facePrinting = face?.printings.find((printing) => printing.id === face.selectedId);
-  const firstSpotlight = slots.find((slot) => slot.card)?.card;
+  const resolvedSpotlights = spotlights
+    .map((slot) => {
+      const printing = slot.printings.find((item) => item.id === slot.selectedId);
+      if (!printing) return null;
+      return printing;
+    })
+    .filter((card): card is ResolvedPrinting => card != null);
+  const firstSpotlight = resolvedSpotlights[0];
   const hasCommander = (deck?.commanders.length ?? 0) > 0;
   const commanderDeck = deck?.spotlightKind === "commander";
-  const showingBack = Boolean(showBack && facePrinting?.backImageUrl);
   const heroPrinting = hasCommander ? facePrinting : firstSpotlight;
   const heroFallback = hasCommander ? face?.card : undefined;
   const faceIdx = commanders[faceIndex] ? faceIndex : 0;
@@ -267,14 +272,26 @@ export function DeckStudio() {
   const partnerChoice = otherCommanders[0];
   const partnerPrinting = partnerChoice?.printings.find((printing) => printing.id === partnerChoice.selectedId);
   const partnerImage = partnerPrinting?.imageUrl || partnerChoice?.card.imageUrl;
-  const showingPartner = Boolean(!showingBack && showPartner && partnerImage);
-  const partnerLine =
-    otherCommanders.length > 0
-      ? `with ${otherCommanders.map((entry) => entry.card.name).join(" & ")}`
-      : undefined;
-  const highlights = slots
-    .filter((slot) => slot.card)
-    .map((slot) => ({ name: slot.card!.name, imageUrl: slot.card!.imageUrl }));
+  const backImageUrl = facePrinting?.backImageUrl;
+  const secondaryImage =
+    secondaryChoice === "back" && backImageUrl
+      ? backImageUrl
+      : secondaryChoice === "partner" && partnerImage
+        ? partnerImage
+        : undefined;
+  const secondaryName =
+    secondaryChoice === "back" && backImageUrl
+      ? facePrinting?.backName
+      : secondaryChoice === "partner" && partnerImage
+        ? partnerChoice?.card.name
+        : undefined;
+  const secondaryIsBackFace = secondaryChoice === "back" && Boolean(backImageUrl);
+  const aliasName =
+    otherCommanders.length > 0 ? otherCommanders.map((entry) => entry.card.name).join(" & ") : undefined;
+  const highlights = resolvedSpotlights.map((card) => ({
+    name: card.name,
+    imageUrl: card.imageUrl,
+  }));
   const suggestions = useMemo(() => {
     if (!deck) return [];
     const seen = new Set<string>();
@@ -292,7 +309,8 @@ export function DeckStudio() {
     <PassportSpread
       deckName={deck?.name ?? "Your next deck"}
       commanderName={hasCommander ? face?.card.name : undefined}
-      partnerLine={deck && hasCommander ? partnerLine : undefined}
+      aliasName={deck && hasCommander ? aliasName : undefined}
+      companionName={deck?.companion?.name}
       description={
         description ||
         (deck ? undefined : "A short line about how the deck plays, typed across the notes page.")
@@ -301,9 +319,9 @@ export function DeckStudio() {
       showColorless={deck != null && deck.colorIdentity.length === 0}
       heroImage={heroPrinting?.imageUrl ?? heroFallback?.imageUrl}
       heroName={heroPrinting?.name ?? heroFallback?.name ?? firstSpotlight?.name}
-      backImage={showingBack ? facePrinting?.backImageUrl : showingPartner ? partnerImage : undefined}
-      backName={showingBack ? facePrinting?.backName : showingPartner ? partnerChoice?.card.name : undefined}
-      showingBack={showingBack}
+      secondaryImage={secondaryImage}
+      secondaryName={secondaryName}
+      secondaryIsBackFace={secondaryIsBackFace}
       highlights={highlights}
       deckUrl={deck?.url}
       qrDataUrl={deck?.qrDataUrl}
@@ -311,10 +329,9 @@ export function DeckStudio() {
       commanderDeck={Boolean(deck && commanderDeck)}
       bracket={bracket}
       formatLabel={deck?.formatLabel ?? "Deck"}
-      playstyles={playstyles}
       setCode={heroPrinting?.set}
       setName={heroPrinting?.setName}
-      endorsements={endorsements}
+      endorsements={endorsementsFromThemes(themes)}
     />
   );
 
@@ -346,7 +363,7 @@ export function DeckStudio() {
   const slowSource = /moxfield\.com/i.test(url);
 
   return (
-    <div className="mx-auto grid w-full max-w-[1440px] grid-cols-1 gap-8 px-4 py-8 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:px-6">
+    <div className="mx-auto grid w-full max-w-[1600px] grid-cols-1 gap-8 px-4 py-8 lg:grid-cols-[minmax(0,760px)_minmax(0,1fr)] lg:px-6">
       <section className="grid min-w-0 content-start gap-6">
         <div>
           <p className="text-xs font-semibold tracking-[0.22em] text-primary uppercase">
@@ -356,10 +373,11 @@ export function DeckStudio() {
             Turn a deck link into an open passport.
           </h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Paste a Moxfield, Archidekt, or ManaBox deck. The commander side carries the card, the
-            visas, and a QR code centered under the commander. The other side carries the title,
-            passport fields, and up to three spotlight cards. A double-faced back or a partner
-            commander can sit in the margin beside the front, at the same size as a spotlight card.
+            Paste a Moxfield, Archidekt, or ManaBox deck. The commander grows to use the left column;
+            the QR code always sits in the center gutter at full size. A secondary commander or back
+            face shows as cropped bands above and below a smaller commander. Pick up to three deck
+            themes for endorsements and up to three spotlight cards from the list with printing
+            dropdowns.
           </p>
         </div>
 
@@ -425,82 +443,38 @@ export function DeckStudio() {
               ))}
             </div>
 
-            <div className="grid gap-1.5">
-              <Label htmlFor="byline">Credit</Label>
-              <Input
-                id="byline"
-                value={byline}
-                maxLength={40}
-                placeholder="Your name or handle"
-                onChange={(event) => setByline(event.target.value)}
-                {...{ onValueChange: setByline }}
-              />
-            </div>
-
-            <div className="grid gap-1.5">
-              <Label htmlFor="endorsements">Endorsements</Label>
-              <Input
-                id="endorsements"
-                value={endorsements}
-                maxLength={80}
-                placeholder="Vehicles, discard, +1/+1 counters"
-                onChange={(event) => setEndorsements(event.target.value)}
-                {...{ onValueChange: setEndorsements }}
-              />
-              <p className="text-sm text-muted-foreground">Sub-themes, separated by commas.</p>
-            </div>
-
-            <div className="grid gap-1.5">
-                <div className="flex items-center justify-between gap-3">
-                <Label htmlFor="description">Notes</Label>
-                <span className="text-xs text-muted-foreground">{description.length}/220</span>
-              </div>
-              <Textarea
-                id="description"
-                value={description}
-                maxLength={220}
-                placeholder="Vehicles return attacking. The deck tries to win before the table untaps."
-                className="field-sizing-fixed max-w-full"
-                onChange={(event) => setDescription(event.target.value)}
-              />
-            </div>
-
-            <fieldset className="grid gap-2">
-              <legend className="text-sm font-medium">Playstyle stamp</legend>
-              <p className="text-sm text-muted-foreground">Choose up to two. They stamp the commander side.</p>
-              <div className="flex flex-wrap gap-2">
-                {PLAYSTYLES.map((style) => {
-                  const checked = playstyles.includes(style);
-                  const disabled = !checked && playstyles.length >= 2;
-                  return (
-                    <label
-                      key={style}
-                      className={`flex items-center gap-2 rounded-lg border border-border px-2.5 py-1.5 text-sm capitalize ${
-                        disabled ? "opacity-50" : ""
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        disabled={disabled}
-                        onChange={() => setPlaystyles((current) => togglePlaystyle(current, style))}
-                      />
-                      {style}
-                    </label>
-                  );
-                })}
-              </div>
-            </fieldset>
-
-            {deck.commanders.length > 0 ? (
-              <div className="grid gap-3">
-                <div>
-                  <p className="text-sm font-medium">Commander printing</p>
-                  <p className="text-sm text-muted-foreground">
-                    This deck has a commander, so that card leads the left page. Pick the printing.
-                  </p>
+            <div className="grid gap-5 md:grid-cols-2">
+              <div className="grid gap-5 content-start">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="byline">Credit</Label>
+                  <Input
+                    id="byline"
+                    value={byline}
+                    maxLength={40}
+                    placeholder="Your name or handle"
+                    onChange={(event) => setByline(event.target.value)}
+                    {...{ onValueChange: setByline }}
+                  />
                 </div>
-                {commanderDeck ? (
+
+                <div className="grid gap-1.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <Label htmlFor="description">Notes</Label>
+                    <span className="text-xs text-muted-foreground">{description.length}/220</span>
+                  </div>
+                  <Textarea
+                    id="description"
+                    value={description}
+                    maxLength={220}
+                    placeholder="Vehicles return attacking. The deck tries to win before the table untaps."
+                    className="field-sizing-fixed max-w-full"
+                    onChange={(event) => setDescription(event.target.value)}
+                  />
+                </div>
+
+                <ThemePicker selected={themes} onChange={setThemes} />
+
+                {deck.commanders.length > 0 && commanderDeck ? (
                   <div className="grid gap-1.5">
                     <Label htmlFor="bracket">Commander bracket</Label>
                     <select
@@ -520,11 +494,22 @@ export function DeckStudio() {
                     </select>
                     <p className="text-sm text-muted-foreground">
                       {deck.bracket
-                        ? `Imported bracket ${deck.bracket}. The visa stamp uses whatever you pick here.`
-                        : "The visa stamp uses this bracket. Deck sites do not always include one."}
+                        ? `Imported bracket ${deck.bracket}. Passport type uses whatever you pick here.`
+                        : "Passport type uses this bracket. Deck sites do not always include one."}
                     </p>
                   </div>
                 ) : null}
+              </div>
+
+              <div className="grid gap-5 content-start">
+            {deck.commanders.length > 0 ? (
+              <div className="grid gap-3">
+                <div>
+                  <p className="text-sm font-medium">Commander printing</p>
+                  <p className="text-sm text-muted-foreground">
+                    This deck has a commander, so that card leads the left page. Pick the printing.
+                  </p>
+                </div>
                 {commanders.length > 1 ? (
                   <fieldset className="grid gap-2">
                     <legend className="text-sm font-medium">Face card</legend>
@@ -541,20 +526,29 @@ export function DeckStudio() {
                     ))}
                   </fieldset>
                 ) : null}
-                {commanders.length > 1 ? (
-                  <div className="grid gap-1">
-                    <label className="flex items-center gap-2 text-sm">
-                      <input
-                        id="show-partner"
-                        type="checkbox"
-                        checked={showPartner}
-                        onChange={(event) => setShowPartner(event.target.checked)}
-                      />
-                      Show the partner beside the commander
-                      {partnerChoice ? ` (${partnerChoice.card.name})` : ""}
-                    </label>
+                {commanders.length > 1 || facePrinting?.backImageUrl ? (
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="secondary-card">Secondary card bands</Label>
+                    <select
+                      id="secondary-card"
+                      className="h-10 w-full max-w-full rounded-lg border border-input bg-card px-2.5 text-sm"
+                      value={secondaryChoice}
+                      onChange={(event) => setSecondaryChoice(event.target.value as SecondaryChoice)}
+                    >
+                      <option value="none">None</option>
+                      {commanders.length > 1 && partnerChoice ? (
+                        <option value="partner">
+                          Other commander — {partnerChoice.card.name}
+                        </option>
+                      ) : null}
+                      {facePrinting?.backImageUrl ? (
+                        <option value="back">
+                          Back face{facePrinting.backName ? ` — ${facePrinting.backName}` : ""}
+                        </option>
+                      ) : null}
+                    </select>
                     <p className="text-sm text-muted-foreground">
-                      The partner uses the same margin as a double-faced back, with the deck visas above and below it. If the back face is also shown, the back face keeps that spot.
+                      The name bar sits above the commander and the rules text sits below it, cropped from the secondary card.
                     </p>
                   </div>
                 ) : null}
@@ -589,23 +583,6 @@ export function DeckStudio() {
                     )}
                   </div>
                 ))}
-                {facePrinting?.backImageUrl ? (
-                  <div className="grid gap-1">
-                    <label className="flex items-center gap-2 text-sm">
-                      <input
-                        id="show-back"
-                        type="checkbox"
-                        checked={showBack}
-                        onChange={(event) => setShowBack(event.target.checked)}
-                      />
-                      Show the back face beside the commander
-                      {facePrinting.backName ? ` (${facePrinting.backName})` : ""}
-                    </label>
-                    <p className="text-sm text-muted-foreground">
-                      The other face sits in the margin at spotlight size. Deck visas sit above and below it, and the QR stays large under the front face. The made-by visa stays beside the passport text.
-                    </p>
-                  </div>
-                ) : null}
               </div>
             ) : null}
 
@@ -613,10 +590,7 @@ export function DeckStudio() {
               <div>
                 <p className="text-sm font-medium">Spotlight cards</p>
                 <p className="text-sm text-muted-foreground">
-                  Up to three cards. Use <span className="text-foreground">Name</span>,{" "}
-                  <span className="text-foreground">Name|SET</span>, or{" "}
-                  <span className="text-foreground">Name|SET 123</span>. Skip the set and the
-                  original printing is used.
+                  Up to three cards from this deck. Pick a printing like the commander.
                 </p>
               </div>
               <label className="grid gap-1.5 text-sm">
@@ -624,51 +598,77 @@ export function DeckStudio() {
                 <select
                   className="h-10 w-full max-w-full rounded-lg border border-input bg-card px-2.5 text-sm"
                   value=""
-                  onChange={(event) => fillFromDeck(event.target.value)}
+                  onChange={(event) => {
+                    const card = suggestions.find((entry) => spotlightCardKey(entry) === event.target.value);
+                    if (card) assignSpotlight(card);
+                  }}
                 >
                   <option value="">Choose a card…</option>
                   {suggestions.map((card) => (
-                    <option key={specFromCard(card)} value={specFromCard(card)}>
+                    <option key={spotlightCardKey(card)} value={spotlightCardKey(card)}>
                       {card.name}
                       {card.set ? ` (${card.set.toUpperCase()})` : ""}
                     </option>
                   ))}
                 </select>
               </label>
-              {slots.map((slot, index) => (
+              {spotlights.map((slot, index) => (
                 <div key={index} className="grid gap-1.5">
                   <Label htmlFor={`spotlight-${index}`}>Spotlight {index + 1}</Label>
-                  <Input
-                    id={`spotlight-${index}`}
-                    value={slot.input}
-                    placeholder={index === 0 ? "Satoru Umezawa|NEO" : "Card name"}
-                    onChange={(event) => updateSlot(index, event.target.value)}
-                    {...{
-                      onValueChange: (value: string) => updateSlot(index, value),
-                    }}
-                  />
-                  {slot.loading ? (
-                    <p className="text-xs text-muted-foreground">Finding that printing…</p>
-                  ) : null}
-                  {slot.error ? <p className="text-xs text-destructive">{slot.error}</p> : null}
                   {slot.card ? (
-                    <p className="text-xs text-muted-foreground">
-                      {slot.card.setName} ({slot.card.set.toUpperCase()}) #{slot.card.collectorNumber}
-                      {slot.card.reprint ? "" : " · original"}
-                    </p>
-                  ) : null}
+                    <>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-medium">{slot.card.name}</span>
+                        <Button type="button" variant="outline" size="sm" onClick={() => clearSpotlight(index)}>
+                          Clear
+                        </Button>
+                      </div>
+                      {slot.loading ? (
+                        <p className="text-sm text-muted-foreground">Loading printings…</p>
+                      ) : slot.error ? (
+                        <p className="text-sm text-destructive">{slot.error}</p>
+                      ) : (
+                        <select
+                          id={`spotlight-${index}`}
+                          className="h-10 w-full max-w-full rounded-lg border border-input bg-card px-2.5 text-sm"
+                          value={slot.selectedId}
+                          onChange={(event) =>
+                            setSpotlights((current) =>
+                              current.map((entry, entryIndex) =>
+                                entryIndex === index
+                                  ? { ...entry, selectedId: event.target.value }
+                                  : entry,
+                              ),
+                            )
+                          }
+                        >
+                          {slot.printings.map((printing, printingIndex) => (
+                            <option key={printing.id} value={printing.id}>
+                              {printingOptionLabel(printing, printingIndex)}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Empty — add a card from the list above.</p>
+                  )}
                 </div>
               ))}
             </div>
+              </div>
 
-            <Button type="button" className="h-10" disabled={exporting} onClick={() => void downloadPoster()}>
-              {exporting ? "Saving PNG…" : "Download PNG"}
-            </Button>
-            {exportError ? (
-              <p role="alert" className="text-sm text-destructive">
-                {exportError}
-              </p>
-            ) : null}
+              <div className="grid gap-2 md:col-span-2">
+                <Button type="button" className="h-10" disabled={exporting} onClick={() => void downloadPoster()}>
+                  {exporting ? "Saving PNG…" : "Download PNG"}
+                </Button>
+                {exportError ? (
+                  <p role="alert" className="text-sm text-destructive">
+                    {exportError}
+                  </p>
+                ) : null}
+              </div>
+            </div>
           </div>
         ) : null}
       </section>

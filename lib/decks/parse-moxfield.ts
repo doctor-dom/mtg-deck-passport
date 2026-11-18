@@ -16,7 +16,7 @@ const BOARD_KEYS: Record<string, Board> = {
   mainboard: "main",
   sideboard: "side",
   maybeboard: "side",
-  companions: "side",
+  companions: "companion",
 };
 
 function text(value: unknown): string {

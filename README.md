@@ -1,24 +1,14 @@
 # Deck Passport
 
-Turn a public Magic: The Gathering deck link into an open passport. Paste a deck from Moxfield, Archidekt, or ManaBox, choose up to three spotlight cards, write a short description, and download a PNG.
+Turn a public Magic: The Gathering deck link into an open passport. Paste a deck from Moxfield, Archidekt, or ManaBox, pick up to three spotlight cards from the list, choose up to three Moxfield-style themes for endorsements, write a short description, and download a PNG.
 
-The sheet is faint blue. The commander side shows the commander (or the first spotlight card, when the deck has no commander), a visa, a gold set-symbol stamp on that visa’s top border, a green playstyle stamp, and power stamps for a commander bracket. A made-by visa sits beside the passport name. A large QR code is centered under the commander, with the deck URL beneath it. The other side shows the deck title, then passport name, place of birth, endorsements, and notes. There is no mana curve and no card-art backdrop.
+The sheet is faint blue at 2000×1280. The left column shows the commander (or the first spotlight card when there is no commander), format and set-symbol visas, and power stamps for a commander bracket. The center gutter always holds a full-size QR code and deck URL. The right side carries the deck title, passport fields, notes, and up to three pinned spotlight cards. There is no mana curve and no card-art backdrop.
 
-Commander decks stamp a bracket from 1 (Exhibition) through 5 (cEDH) as that many commander-symbol stamps, with the level written underneath. If the deck site includes a bracket, it is selected for you and you can change it. Other formats stamp the deck type instead, such as Standard, Modern, or Historic. The playstyle stamp takes up to two of aggro, control, combo, midrange, or ramp. Endorsements are the sub-themes you type, such as vehicles or +1/+1 counters.
+Commander decks stamp a bracket from 1 (Exhibition) through 5 (cEDH) as that many commander-symbol stamps, with the level centered underneath. If the deck site includes a bracket, it is selected for you and you can change it. Other formats stamp the deck type instead, such as Standard, Modern, or Historic. Endorsements come from up to three themes in the searchable Moxfield theme list, shown comma-separated on the passport.
 
-Commander, Brawl, and Oathbreaker decks are detected automatically. You pick the commander printing. If that printing is double-faced, the back face sits in the margin beside the commander at the same size as a spotlight card. Partner commanders use that same margin. The deck visas sit above and below the side card, at the same size and transparency as on a single-faced sheet, and the QR code under the front face stays the large single-commander size. The made-by visa stays to the right of the passport text, with "made by:" in the upper border and "MTG" on its own line above "Deck Passport".
+A single commander uses a larger card image in the left column. For a partner, background, or other second commander—or for a double-faced back—you can show cropped name and rules bands above and below a smaller commander; the QR gutter does not move or shrink. Spotlight cards are chosen from the loaded deck with the same printing dropdown as the commander. The made-by visa stays beside the passport text.
 
-The QR code under the commander opens the same deck link you pasted, rewritten to a stable URL for that site.
-
-## Card syntax
-
-Each spotlight card is entered as:
-
-- `Satoru Umezawa` — original printing
-- `Satoru Umezawa|NEO` — that set
-- `Satoru Umezawa|NEO 234` — that set and collector number
-
-You can also pick a card from the loaded deck. That fills in the deck's own set and collector number.
+The QR code opens the same deck link you pasted, rewritten to a stable URL for that site.
 
 ## Run it locally
 

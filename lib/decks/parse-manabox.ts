@@ -39,6 +39,7 @@ function boardFor(category: number, format: string): Board {
   if (category === 0) return "commander";
   if (category === 1) return "oathbreaker";
   if (category === 2) return "signature";
+  if (category === 6) return "companion";
   if (category === 4 || category === 5) return "side";
   if (category === 3) return "main";
   return /commander|brawl|oathbreaker|edh/i.test(format) && category === 0

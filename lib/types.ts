@@ -7,7 +7,8 @@ export type Board =
   | "oathbreaker"
   | "signature"
   | "main"
-  | "side";
+  | "side"
+  | "companion";
 
 export type ManaColor = "W" | "U" | "B" | "R" | "G";
 
@@ -37,6 +38,7 @@ export type NormalizedDeck = {
   spotlightKind: SpotlightKind;
   author?: string;
   commanders: DeckCard[];
+  companion?: DeckCard;
   cards: DeckCard[];
   colorIdentity: ManaColor[];
   bracket?: number;

@@ -23,3 +23,12 @@ export function readBracket(value: unknown, depth = 0): number | undefined {
 export function bracketName(value: number | null | undefined): string | undefined {
   return BRACKETS.find((item) => item.value === value)?.name;
 }
+
+const LEVEL_WORDS = ["One", "Two", "Three", "Four", "Five"] as const;
+
+export function passportTypeLine(value: number | null | undefined): string | undefined {
+  if (value == null || value < 1 || value > 5) return undefined;
+  const name = bracketName(value);
+  if (!name) return undefined;
+  return `Level ${LEVEL_WORDS[value - 1]} - ${name}`;
+}
